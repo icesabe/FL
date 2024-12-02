@@ -190,27 +190,15 @@ class Estimator:
         return hat_N
     
 def local_data_sampling(dataset,K_desired,hatN):
-    """
-    Performs local data sampling using Bernoulli sampling
-    
-    Args:
-        dataset: Original dataset
-        K_desired: Desired sample size
-        hatN: Estimated population size
-    
-    Returns:
-        sampled_data: Tuple of (features, labels) for sampled data points
-    """
+   
     psample = K_desired/hatN
-    # Initialize empty lists for sampled data
     sampled_features = []
     sampled_labels = []
-    # Iterate through the dataset
     for features, labels in dataset:
-        # For each data point, draw from Bernoulli(psample)
+        
         sample_mask = np.random.binomial(n=1, p=psample, size=len(features))
         
-        # Include selected data points
+       
         selected_features = features[sample_mask == 1]
         selected_labels = labels[sample_mask == 1]
         
@@ -218,14 +206,12 @@ def local_data_sampling(dataset,K_desired,hatN):
             sampled_features.append(selected_features)
             sampled_labels.append(selected_labels)
     
-    # Concatenate all sampled data
+    
     if sampled_features:
         sampled_features = torch.cat(sampled_features)
         sampled_labels = torch.cat(sampled_labels)
         return sampled_features, sampled_labels
     else:
         return None, None
-    #sample_chocie = np.random.binomial(size=(len(candidate_samples),),n=1,p=K/hatN)
-    #candidate_samples = candidate_samples[sample_chocie==1]
-    #return candidate_samples    
+  
 
