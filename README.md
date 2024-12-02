@@ -31,23 +31,17 @@ Here we provide the implementation of Stratified Client Selection Scheme along w
 - The local loss function regularization parameter `mu`. FedProx with µ = 0 and without systems heterogeneity (no stragglers) corresponds to FedAvg.
 - The `seed` used to initialize the training model. We use 0 in all our experiments.
 - Force a boolean equal `force` to True when a simulation has already been run but needs to be rerun.
+- The privacy parameter `alpha` used in DP sampling (default=0.5)
+- The maximum response value `M` for the Estimator in DP sampling (default=300)
+- The desired sample size `K_desired` for local data sampling (default=2048)
+
++ To train and evaluate on MNIST:
+```
 
 
 + To train and evaluate on MNIST:
 ```
-python main_mnist.py --dataset=MNIST \
-    --partition=iid \
-    --sampling=random \
-    --sample_ratio=0.1 \
-    --lr=0.01 \
-    --batch_size=50 \
-    --n_SGD=50 \
-    --n_iter=200 \
-    --strata_num=10 \
-    --decay=1.0 \
-    --mu=0.0 \
-    --seed=0 \
-    --force=False
+python main_mnist.py --dataset=MNIST --partition=iid --sampling=random --sample_ratio=0.1 --lr=0.01 --batch_size=50 --n_SGD=50 --n_iter=200 --strata_num=10 --decay=1.0 --mu=0.0 --seed=0 --force=False --alpha=0.5 --M=300 --K_desired=2048
 ```
 
 + To train and evaluate on FMNIST:
@@ -84,6 +78,22 @@ python main_cifar10.py --dataset=CIFAR10 \
     --force=False
 ```
 
++ To train and evaluate with DP sampling on MNIST:
+```
+python main_mnist.py --dataset=MNIST \
+    --partition=iid \
+    --sampling=dp \
+    --sample_ratio=0.1 \
+    --lr=0.01 \
+    --batch_size=50 \
+    --n_SGD=50 \
+    --n_iter=200 \
+    --strata_num=10 \
+    --decay=1.0 \
+    --mu=0.0 \
+    --seed=0 \
+    --force=False
+```
 
 Every experiment saves by default the training loss, the testing accuracy, and the sampled clients at every iteration in the folder `saved_exp_info`. The global model and local models histories can also be saved.
 

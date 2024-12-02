@@ -3,7 +3,7 @@ import pandas as pd
 import pickle
 from math import floor
 from numpy.random import choice
-
+import torch
 
 def get_num_cnt(args, list_dls_train):
     labels = []
@@ -166,3 +166,66 @@ def cal_allocation_number(partition_result, stratify_result, sample_ratio):
         i += 1
 
     return allocation_number
+
+class Estimator:
+    def __init__(self,train_users,alpha,M):
+        self.M = M
+        self.alpha = alpha
+        self.train_users = train_users
+        
+    def query(self,userid):
+        fake_response = np.random.randint(1,self.M)
+        real_response = min(len(self.train_users[userid]), self.M - 1)
+        #real_response = len(self.train_users[userid])
+        choice = np.random.binomial(n=1,p=self.alpha)
+        response = choice*real_response + (1-choice)*fake_response
+        return response
+    
+    def estimate(self,):
+        R = 0
+        for uid in range(len(self.train_users)):
+            R += self.query(uid)
+        hat_N =  (R-len(self.train_users)*(1-self.alpha)*self.M/2)/self.alpha
+        hat_N = max(hat_N,len(self.train_users))
+        return hat_N
+    
+def local_data_sampling(dataset,K_desired,hatN):
+    """
+    Performs local data sampling using Bernoulli sampling
+    
+    Args:
+        dataset: Original dataset
+        K_desired: Desired sample size
+        hatN: Estimated population size
+    
+    Returns:
+        sampled_data: Tuple of (features, labels) for sampled data points
+    """
+    psample = K_desired/hatN
+    # Initialize empty lists for sampled data
+    sampled_features = []
+    sampled_labels = []
+    # Iterate through the dataset
+    for features, labels in dataset:
+        # For each data point, draw from Bernoulli(psample)
+        sample_mask = np.random.binomial(n=1, p=psample, size=len(features))
+        
+        # Include selected data points
+        selected_features = features[sample_mask == 1]
+        selected_labels = labels[sample_mask == 1]
+        
+        if len(selected_features) > 0:
+            sampled_features.append(selected_features)
+            sampled_labels.append(selected_labels)
+    
+    # Concatenate all sampled data
+    if sampled_features:
+        sampled_features = torch.cat(sampled_features)
+        sampled_labels = torch.cat(sampled_labels)
+        return sampled_features, sampled_labels
+    else:
+        return None, None
+    #sample_chocie = np.random.binomial(size=(len(candidate_samples),),n=1,p=K/hatN)
+    #candidate_samples = candidate_samples[sample_chocie==1]
+    #return candidate_samples    
+
