@@ -467,36 +467,14 @@ def FedProx_stratified_dp_sampling(
     M: int,        # Maximum response value for the Estimator
     K_desired: int, # Desired sample size
 ):
-    """
-    Runs FedProx with privacy-preserving sampling by integrating FedSampling mechanisms.
     
-    Args:
-        args: Command-line arguments.
-        model: The global model to be trained.
-        n_sampled (int): Number of clients to sample each round.
-        training_sets (list): List of training data loaders for each client.
-        testing_sets (list): List of testing data loaders for each client.
-        n_iter (int): Number of communication rounds.
-        n_SGD (int): Number of local SGD steps.
-        lr (float): Learning rate.
-        file_name (str): Identifier for saving results.
-        decay: Learning rate decay factor.
-        mu: Regularization parameter for FedProx.
-        alpha (float): Privacy parameter for the Estimator.
-        M (int): Maximum response value for the Estimator.
-    
-    Returns:
-        model: The updated global model.
-        loss_hist: History of losses over iterations.
-        acc_hist: History of accuracies over iterations.
-    """
     from copy import deepcopy
     import numpy as np
     import random
     from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
     from utils import save_pkl
     from utils import local_data_sampling
-    #from FedSampling import Estimator, local_sampling
+    
 
     # Initialize Estimator for privacy-preserving sampling
     train_users = {k: range(len(dl.dataset)) for k, dl in enumerate(training_sets)}
@@ -575,7 +553,7 @@ def FedProx_stratified_dp_sampling(
             )
 
             if sampled_features is not None and len(sampled_features) > 0:
-                # Create a temporary DataLoader for the sampled data
+               
                 sampled_dataset = torch.utils.data.TensorDataset(sampled_features, sampled_labels)
                 sampled_loader = torch.utils.data.DataLoader(
                     sampled_dataset,
