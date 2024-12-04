@@ -11,6 +11,7 @@ import config
 from utils import *
 from copy import deepcopy
 from torch.autograd import Variable
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix
 
 if config.USE_GPU:
     import os
@@ -48,6 +49,46 @@ def accuracy_dataset(model, dataset):
 
     return accuracy
 
+def compute_metrics(model, dataset):
+    """
+    Compute classification metrics (accuracy, F1, precision, recall, false positives, false negatives).
+    """
+    y_true = []
+    y_pred = []
+
+    correct = 0
+
+    for features, labels in dataset:
+        features = get_variable(features)
+        labels = get_variable(labels)
+
+        predictions = model(features)
+        _, predicted = predictions.max(1, keepdim=True)
+
+        # Store the true and predicted labels
+        y_true.extend(labels.cpu().numpy())
+        y_pred.extend(predicted.cpu().numpy())
+
+        # Count how many are correct
+        correct += torch.sum(predicted.view(-1, 1) == labels.view(-1, 1)).item()
+
+    accuracy = 100 * correct / len(dataset.dataset)     # 1. Accuracy score
+    f1_macro = f1_score(y_true, y_pred, average='macro')    # 2. F1-Macro
+    precision = precision_score(y_true, y_pred, average='macro')    # 3. Precision
+    recall = recall_score(y_true, y_pred, average='macro')      # 4. Recall
+
+    cm = confusion_matrix(y_true, y_pred)  # Confusion Matrix
+    fp = cm.sum(axis=0) - np.diag(cm)  # 5. False Positives
+    fn = cm.sum(axis=1) - np.diag(cm)  # 6. False Negatives
+
+    return {
+        "accuracy": accuracy,
+        "f1_macro": f1_macro,
+        "precision": precision,
+        "recall": recall,
+        "false_positives": fp.tolist(),
+        "false_negatives": fn.tolist(),
+    }
 
 def loss_dataset(model, train_data, loss_classifier):
     """Compute the loss of `model` on `test_data`"""
@@ -466,15 +507,7 @@ def FedProx_stratified_dp_sampling(
     alpha: float,  # Privacy parameter from FedSampling
     M: int,        # Maximum response value for the Estimator
     K_desired: int, # Desired sample size
-):
-    
-    from copy import deepcopy
-    import numpy as np
-    import random
-    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-    from utils import save_pkl
-    from utils import local_data_sampling
-    
+):  
 
     # Initialize Estimator for privacy-preserving sampling
     train_users = {k: range(len(dl.dataset)) for k, dl in enumerate(training_sets)}
