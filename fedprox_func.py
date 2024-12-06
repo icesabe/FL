@@ -29,6 +29,102 @@ def loss_classifier(predictions, labels):
     criterion = nn.CrossEntropyLoss()
     return criterion(predictions, labels)
 
+def get_compressed_gradients(model, training_sets, d_prime=2):
+    """Gets compressed gradient from all clients"""
+    all_compressed_grads = []
+    all_indices = []
+    
+    for client_id, train_data in enumerate(training_sets):
+        # Get one batch gradient
+        local_model = deepcopy(model)
+        for features, labels in train_data:
+            if config.USE_GPU:
+                features = features.cuda()
+                labels = labels.cuda()
+                
+            predictions = local_model(features)
+            loss = loss_classifier(predictions, labels)
+            loss.backward()
+            break  # Only use first batch
+            
+        # Flatten gradient
+        grad = []
+        for param in local_model.parameters():
+            if param.grad is not None:
+                grad.append(param.grad.data.flatten())
+        flat_grad = torch.cat(grad)
+        
+        # Compress using k-means
+        grad_np = flat_grad.cpu().detach().numpy()
+        kmeans = KMeans(n_clusters=d_prime, random_state=0)
+        indices = kmeans.fit_predict(grad_np.reshape(-1, 1))
+        centers = kmeans.cluster_centers_.flatten()
+        
+        all_compressed_grads.append(centers)
+        all_indices.append(indices)
+        
+    return np.array(all_compressed_grads), all_indices
+    """
+    Calculates number of clients to sample from each stratum
+    based on size and variance
+    """
+    # Calculate variances and sizes
+    variances = [calculate_stratum_variance(gradients, stratum) for stratum in strata]
+    sizes = [len(stratum) for stratum in strata]
+    
+    # Calculate allocation weights
+    weights = [size * var for size, var in zip(sizes, variances)]
+    total_weight = sum(weights)
+    
+    if total_weight == 0:
+        return [total_samples // len(strata)] * len(strata)
+    
+    # Allocate samples proportionally
+    allocations = [int(total_samples * w / total_weight) for w in weights]
+    
+    # Distribute any remaining samples
+    remaining = total_samples - sum(allocations)
+    for i in range(remaining):
+        allocations[i] += 1
+    
+    return allocations
+
+def stratify_clients_compressed_gradients(args, compressed_grads):
+    """
+    Args:
+        args: Arguments
+        compressed_grads: Compressed gradients from clients
+    """
+    # Uses compressed gradients directly - no need for PCA
+    data = compressed_grads
+    print("Shape of compressed gradients:", data.shape)
+
+    # Prototype Based Clustering: KMeans
+    model = KMeans(n_clusters=args.strata_num)
+    model.fit(data)
+    pred_y = model.predict(data)
+    pred_y = list(pred_y)
+    result = []
+    
+    # put indexes into result
+    for num in range(args.strata_num):
+        one_type = []
+        for index, value in enumerate(pred_y):
+            if value == num:
+                one_type.append(index)
+        result.append(one_type)
+    print("Stratification result:", result)
+    
+    save_path = f'dataset/stratify_result/{args.dataset}_{args.partition}.pkl'
+    with open(save_path, 'wb') as output:
+        pickle.dump(result, output)
+
+    # print silhouette_score
+    s_score = metrics.silhouette_score(data, pred_y, sample_size=len(data), metric='euclidean')
+    print("strata_num：", args.strata_num, " silhouette_score：", s_score, "\n")
+    
+    return result
+
 
 def accuracy_dataset(model, dataset):
     """Compute the accuracy {}% of `model` on `test_data`"""
