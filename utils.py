@@ -228,6 +228,13 @@ def information_squeeze(gradient_tensor, d_prime):
     """
     # Convert gradient tensor to numpy for clustering
     gradient_np = gradient_tensor.cpu().detach().numpy()
+
+    # Get unique values and their counts
+    unique_values = np.unique(gradient_np)
+    n_unique = len(unique_values)
+    
+    # Adjust d_prime if it's larger than number of unique values
+    d_prime = min(d_prime, n_unique)
     
     # Initialize clustering
     kmeans = KMeans(n_clusters=d_prime, random_state=0)
