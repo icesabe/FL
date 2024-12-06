@@ -1,7 +1,6 @@
-Google Colab Link: https://colab.research.google.com/drive/1-9u0vMrjcoQcXVXqSAP9ltl-yIz8MQxg
-*******LATEST CHANGE: FedProx_stratified_dp_sampling_compressed_gradients function in fedprox_func.py********
-*******Not checked yet, but ran the function in Google Colab
-*******
+Google Colab Link: https://colab.research.google.com/drive/1-9u0vMrjcoQcXVXqSAP9ltl-yIz8MQxg <br />
+❗❗**LATEST CHANGE: FedProx_stratified_dp_sampling_compressed_gradients function in fedprox_func.py** <br />
+❗❗**Not checked yet, but ran the function on Google Colab**<br />
 
 
 
