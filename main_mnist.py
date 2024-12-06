@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description='FedProx on MNIST')
 
 parser.add_argument('--dataset', type=str, default='MNIST', help="The dataset used.")
 parser.add_argument('--partition', type=str, default='iid', help="The data partition method used. partition ∈ { iid, dir_{alpha}, shard }")
-parser.add_argument('--sampling', type=str, help="The sampling scheme used. sampling ∈ { random, importance, ours, dp}")
+parser.add_argument('--sampling', type=str, help="The sampling scheme used. sampling ∈ { random, importance, ours, dp, dp_comp_grads}")
 parser.add_argument("--sample_ratio", type=float, default=0.1, help="The percentage of clients sampled sample_ratio. We consider 100 clients in all our datasets and use thus sample_ratio=0.1.")
 parser.add_argument("--lr", type=float, default=0.01, help="The learning rate lr used.")
 parser.add_argument("--batch_size", type=int, default=50, help="The batch size used.")

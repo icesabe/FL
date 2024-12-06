@@ -922,12 +922,13 @@ def run(args, model_mnist, n_sampled, list_dls_train, list_dls_test, file_name):
             args.M,
             args.K_desired,
             )
-
-    """RUN FEDSTS WITHOUT DP """
-    if args.sampling == "fedsts" and (
-        not os.path.exists(f"saved_exp_info/acc/{file_name}.pkl") or args.force
+    
+    """RUN FEDAVG WITH dp sampling and compressed client gradients"""
+    if (args.sampling == "dp_comp_grads") and (
+            not os.path.exists(f"saved_exp_info/acc/{file_name}.pkl") or args.force
     ):
-        FedSTS(
+        FedProx_stratified_dp_sampling_compressed_gradients(
+            args,
             model_mnist,
             n_sampled,
             list_dls_train,
@@ -938,6 +939,7 @@ def run(args, model_mnist, n_sampled, list_dls_train, list_dls_test, file_name):
             file_name,
             args.decay,
             args.mu,
-            num_strata=args.strata_num,
-            compression_ratio=0.1  # You can add this as a command line argument
-        )
+            args.alpha,
+            args.M,
+            args.K_desired,
+            )
