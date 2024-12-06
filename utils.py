@@ -8,6 +8,7 @@ from collections import defaultdict
 from sklearn import metrics
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+from copy import deepcopy
 
 def get_num_cnt(args, list_dls_train):
     labels = []
