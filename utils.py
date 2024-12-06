@@ -4,6 +4,7 @@ import pickle
 from math import floor
 from numpy.random import choice
 import torch
+from collections import defaultdict
 
 def get_num_cnt(args, list_dls_train):
     labels = []
@@ -214,4 +215,103 @@ def local_data_sampling(dataset,K_desired,hatN):
     else:
         return None, None
   
+# Algorithm 1 IS 
+def information_squeeze(gradient_tensor, d_prime):
+    """
+    Algorithm 1: Information Squeeze
+    Compresses gradients by grouping similar components
+    
+    Args:
+        gradient_tensor: Original gradient
+        d_prime: Target dimension for compression
+    Returns:
+        compressed_gradient, group_indices
+    """
+    # Convert gradient tensor to numpy for clustering
+    gradient_np = gradient_tensor.cpu().detach().numpy()
+    
+    # Initialize clustering
+    kmeans = KMeans(n_clusters=d_prime, random_state=0)
+    group_indices = kmeans.fit_predict(gradient_np.reshape(-1, 1))
+    
+    # Calculate centroids
+    compressed_gradient = torch.zeros(d_prime)
+    for i in range(d_prime):
+        mask = (group_indices == i)
+        if mask.any():
+            compressed_gradient[i] = torch.tensor(gradient_np[mask].mean())
+    
+    return compressed_gradient, group_indices
 
+def restore_gradient(compressed_gradient, group_indices, original_shape):
+    """
+    Restores original gradient shape from compressed form
+    """
+    restored = torch.zeros(original_shape)
+    for i, idx in enumerate(group_indices):
+        restored.flat[i] = compressed_gradient[idx]
+    return restored
+
+# Algorithm 2 ClientStratification
+def client_stratification(compressed_gradients, num_strata):
+    """
+    Algorithm 2: Client Stratification
+    Groups clients into strata based on their compressed gradients
+    
+    Args:
+        compressed_gradients: List of compressed gradients from clients
+        num_strata: Number of strata to create
+    Returns:
+        List of strata (each containing client indices)
+    """
+    # Convert to numpy array for clustering
+    gradients_np = np.array([g.cpu().detach().numpy() for g in compressed_gradients])
+    
+    # Perform clustering
+    kmeans = KMeans(n_clusters=num_strata, random_state=0)
+    strata_assignments = kmeans.fit_predict(gradients_np)
+    
+    # Group clients by strata
+    strata = defaultdict(list)
+    for client_idx, strata_idx in enumerate(strata_assignments):
+        strata[strata_idx].append(client_idx)
+    
+    return [strata[i] for i in range(num_strata)]
+
+def calculate_stratum_variance(gradients, stratum_indices):
+    """
+    Calculates the variance within a stratum
+    """
+    if not stratum_indices:
+        return 0.0
+    
+    stratum_grads = [gradients[i] for i in stratum_indices]
+    mean_grad = sum(stratum_grads) / len(stratum_grads)
+    variance = sum((g - mean_grad).pow(2).sum() for g in stratum_grads)
+    return variance.item() / len(stratum_indices)
+
+def calculate_allocation(strata, gradients, total_samples):
+    """
+    Calculates number of clients to sample from each stratum
+    based on size and variance
+    """
+    # Calculate variances and sizes
+    variances = [calculate_stratum_variance(gradients, stratum) for stratum in strata]
+    sizes = [len(stratum) for stratum in strata]
+    
+    # Calculate allocation weights
+    weights = [size * var for size, var in zip(sizes, variances)]
+    total_weight = sum(weights)
+    
+    if total_weight == 0:
+        return [total_samples // len(strata)] * len(strata)
+    
+    # Allocate samples proportionally
+    allocations = [int(total_samples * w / total_weight) for w in weights]
+    
+    # Distribute any remaining samples
+    remaining = total_samples - sum(allocations)
+    for i in range(remaining):
+        allocations[i] += 1
+    
+    return allocations
