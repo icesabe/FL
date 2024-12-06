@@ -10,6 +10,7 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from copy import deepcopy
 import config
+from fedprox_func import *
 
 def get_num_cnt(args, list_dls_train):
     labels = []
