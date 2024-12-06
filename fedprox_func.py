@@ -678,6 +678,177 @@ def FedProx_stratified_dp_sampling(
 
     return model, loss_hist, acc_hist
 
+def FedProx_stratified_dp_sampling_compressed_gradients(
+    args,
+    model,
+    n_sampled: int,
+    training_sets: list,
+    testing_sets: list,
+    n_iter: int,
+    n_SGD: int,
+    lr: float,
+    file_name: str,
+    decay,
+    mu,
+    alpha: float,  # Privacy parameter from FedSampling
+    M: int,        # Maximum response value for the Estimator
+    K_desired: int, # Desired sample size
+):  
+    # Initialize Estimator for privacy-preserving sampling
+    train_users = {k: range(len(dl.dataset)) for k, dl in enumerate(training_sets)}
+    estimator = Estimator(train_users, alpha, M)
+
+    K = len(training_sets)  # number of clients
+    n_samples = np.array([len(db.dataset) for db in training_sets])
+    weights = n_samples / np.sum(n_samples)
+    print("Clients' weights:", weights)
+
+    #**********************
+    # Get compressed gradients from all clients
+    compressed_grads, grad_indices = get_compressed_gradients(model, training_sets)
+    
+    # Use compressed gradients for stratification
+    stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
+    #**********************
+
+    allocation_number = []
+    if config.WITH_ALLOCATION and not args.partition == 'shard':
+        partition_result = pickle.load(open(f"dataset/data_partition_result/{args.dataset}_{args.partition}.pkl", "rb"))
+        allocation_number = cal_allocation_number(partition_result, stratify_result, args.sample_ratio)
+    print(allocation_number)
+
+    N_STRATA = len(stratify_result)
+    SIZE_STRATA = [len(cls) for cls in stratify_result]
+    N_CLIENTS = sum(len(c) for c in stratify_result)  # number of clients
+
+    loss_hist = np.zeros((n_iter + 1, K))
+    acc_hist = np.zeros((n_iter + 1, K))
+    #metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
+
+    for k, dl in enumerate(training_sets):
+        loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
+        acc_hist[0, k] = accuracy_dataset(model, dl)
+        #metrics_record[0, k] = compute_metrics(model, dl)
+
+    # LOSS AND ACCURACY OF THE INITIAL MODEL
+    server_loss = np.dot(weights, loss_hist[0])
+    server_acc = np.dot(weights, acc_hist[0])
+    print(f"====> i: 0 Loss: {server_loss} Test Accuracy: {server_acc}")
+
+    sampled_clients_hist = np.zeros((n_iter, K)).astype(int)
+
+    for i in range(n_iter):
+        clients_params = []
+        clients_models = []
+        sampled_clients_for_grad = []
+
+        # Estimate the total population size with privacy preservation
+        hatN = estimator.estimate()
+        print(f"Estimated population size (hatN): {hatN}")
+
+        # Sampling clients based on stratification and privacy-preserving estimates
+        chosen_p = np.zeros((N_STRATA, N_CLIENTS)).astype(float)
+        for j, cls in enumerate(stratify_result):
+            for k in range(N_CLIENTS):
+                if k in cls:
+                    chosen_p[j][k] = round(1 / SIZE_STRATA[j], 12)
+        
+
+        if config.WITH_ALLOCATION and not args.partition == 'shard':
+            selects = sample_clients_with_allocation(chosen_p, allocation_number)
+        else:
+            choice_num = int(100 * args.sample_ratio / args.strata_num)
+            selects = sample_clients_without_allocation(chosen_p, choice_num)
+        if args.partition == 'iid':
+            selects = choice(100, int(100 * args.sample_ratio), replace=False,
+                             p=[0.01 for _ in range(100)])
+            
+        selected = []
+        for _ in selects:
+            selected.append(_)
+        print("Chosen clients: ", selected)
+
+        for k in selected:
+            local_model = deepcopy(model)
+            local_optimizer = optim.SGD(local_model.parameters(), lr=lr)
+
+            # local data sampling
+            sampled_features, sampled_labels = local_data_sampling(
+                training_sets[k], 
+                K_desired, 
+                hatN
+            )
+
+            if sampled_features is not None and len(sampled_features) > 0:
+               
+                sampled_dataset = torch.utils.data.TensorDataset(sampled_features, sampled_labels)
+                sampled_loader = torch.utils.data.DataLoader(
+                    sampled_dataset,
+                    batch_size=args.batch_size,
+                    shuffle=True
+                )
+            # Local training with FedProx
+            local_learning(
+                local_model,
+                mu,
+                local_optimizer,
+                sampled_loader,
+                n_SGD,
+                loss_classifier,
+            )
+
+            # Append parameters for aggregation
+            list_params = list(local_model.parameters())
+            list_params = [tens_param.detach() for tens_param in list_params]
+            clients_params.append(list_params)
+            sampled_clients_hist[i, k] = 1
+
+        # Create the new global model by aggregating client updates
+        new_model = deepcopy(model)
+        # Data-size proportional weights
+        #weights_ = [weights[client] for client in selected]
+        weights_ = [1/n_sampled]*n_sampled
+
+        for layer_weights in new_model.parameters():
+            layer_weights.data.sub_(sum(weights_) * layer_weights.data)
+
+        for k, client_hist in enumerate(clients_params):
+            for idx, layer_weights in enumerate(new_model.parameters()):
+                contribution = client_hist[idx].data * weights_[k]
+                layer_weights.data.add_(contribution)
+
+        model = new_model
+
+        # Compute the loss/accuracy of the different clients with the new model
+        for k, dl in enumerate(training_sets):
+            loss_hist[i + 1, k] = float(loss_dataset(model, dl, loss_classifier).detach())
+
+        for k, dl in enumerate(testing_sets):
+            acc_hist[i + 1, k] = accuracy_dataset(model, dl)
+
+            # get metrics (accuracy, f1, etc.) and save it to metrics_record
+            # for round i+1 and the k-th batch of test data
+            #metrics_record[i + 1, k] = compute_metrics(model, dl)
+
+        server_loss = np.dot(weights, loss_hist[i + 1])
+        server_acc = np.dot(weights, acc_hist[i + 1])
+
+        print(f"====> i: {i + 1} Loss: {server_loss} Server Test Accuracy: {server_acc}")
+
+        # Decrease the learning rate
+        lr *= decay
+
+    # Save the training history
+    save_pkl(loss_hist, "loss", file_name)
+    save_pkl(acc_hist, "acc", file_name)
+    #save_pkl(metrics_record, "metrics", file_name)
+
+    torch.save(
+        model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth"
+    )
+
+    return model, loss_hist, acc_hist
+
 def run(args, model_mnist, n_sampled, list_dls_train, list_dls_test, file_name):
     """RUN FEDAVG WITH RANDOM SAMPLING"""
     if args.sampling == "random" and (
