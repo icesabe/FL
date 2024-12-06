@@ -49,46 +49,46 @@ def accuracy_dataset(model, dataset):
 
     return accuracy
 
-def compute_metrics(model, dataset):
-    """
-    Compute classification metrics (accuracy, F1, precision, recall, false positives, false negatives).
-    """
-    y_true = []
-    y_pred = []
+# def compute_metrics(model, dataset):
+#     """
+#     Compute classification metrics (accuracy, F1, precision, recall, false positives, false negatives).
+#     """
+#     y_true = []
+#     y_pred = []
 
-    correct = 0
+#     correct = 0
 
-    for features, labels in dataset:
-        features = get_variable(features)
-        labels = get_variable(labels)
+#     for features, labels in dataset:
+#         features = get_variable(features)
+#         labels = get_variable(labels)
 
-        predictions = model(features)
-        _, predicted = predictions.max(1, keepdim=True)
+#         predictions = model(features)
+#         _, predicted = predictions.max(1, keepdim=True)
 
-        # Store the true and predicted labels
-        y_true.extend(labels.cpu().numpy())
-        y_pred.extend(predicted.cpu().numpy())
+#         # Store the true and predicted labels
+#         y_true.extend(labels.cpu().numpy())
+#         y_pred.extend(predicted.cpu().numpy())
 
-        # Count how many are correct
-        correct += torch.sum(predicted.view(-1, 1) == labels.view(-1, 1)).item()
+#         # Count how many are correct
+#         correct += torch.sum(predicted.view(-1, 1) == labels.view(-1, 1)).item()
 
-    accuracy = 100 * correct / len(dataset.dataset)     # 1. Accuracy score
-    f1_macro = f1_score(y_true, y_pred, average='macro')    # 2. F1-Macro
-    precision = precision_score(y_true, y_pred, average='macro')    # 3. Precision
-    recall = recall_score(y_true, y_pred, average='macro')      # 4. Recall
+#     accuracy = 100 * correct / len(dataset.dataset)     # 1. Accuracy score
+#     f1_macro = f1_score(y_true, y_pred, average='macro')    # 2. F1-Macro
+#     precision = precision_score(y_true, y_pred, average='macro')    # 3. Precision
+#     recall = recall_score(y_true, y_pred, average='macro')      # 4. Recall
 
-    cm = confusion_matrix(y_true, y_pred)  # Confusion Matrix
-    fp = cm.sum(axis=0) - np.diag(cm)  # 5. False Positives
-    fn = cm.sum(axis=1) - np.diag(cm)  # 6. False Negatives
+#     cm = confusion_matrix(y_true, y_pred)  # Confusion Matrix
+#     fp = cm.sum(axis=0) - np.diag(cm)  # 5. False Positives
+#     fn = cm.sum(axis=1) - np.diag(cm)  # 6. False Negatives
 
-    return {
-        "accuracy": accuracy,
-        "f1_macro": f1_macro,
-        "precision": precision,
-        "recall": recall,
-        "false_positives": fp.tolist(),
-        "false_negatives": fn.tolist(),
-    }
+#     return {
+#         "accuracy": accuracy,
+#         "f1_macro": f1_macro,
+#         "precision": precision,
+#         "recall": recall,
+#         "false_positives": fp.tolist(),
+#         "false_negatives": fn.tolist(),
+#     }
 
 def loss_dataset(model, train_data, loss_classifier):
     """Compute the loss of `model` on `test_data`"""
@@ -154,13 +154,13 @@ def FedProx_random_sampling(
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
-    metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
+    #metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
 
     for k, dl in enumerate(training_sets):
 
         loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
         acc_hist[0, k] = accuracy_dataset(model, dl)
-        metrics_record[0, k] = compute_metrics(model, dl)
+        #metrics_record[0, k] = compute_metrics(model, dl)
 
     # LOSS AND ACCURACY OF THE INITIAL MODEL
     server_loss = np.dot(weights, loss_hist[0])
@@ -222,7 +222,7 @@ def FedProx_random_sampling(
 
             # get metrics (accuracy, f1, etc.) and save it to metrics_record
             # for round i+1 and the k-th batch of test data
-            metrics_record[i + 1, k] = compute_metrics(model, dl)
+            #metrics_record[i + 1, k] = compute_metrics(model, dl)
 
         server_loss = np.dot(weights, loss_hist[i + 1])
         server_acc = np.dot(weights, acc_hist[i + 1])
@@ -240,7 +240,7 @@ def FedProx_random_sampling(
     save_pkl(loss_hist, "loss", file_name)
     save_pkl(acc_hist, "acc", file_name)
     # Also save the metrics
-    save_pkl(metrics_record, "metrics", file_name)
+    #save_pkl(metrics_record, "metrics", file_name)
 
     torch.save(
         model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth"
@@ -268,13 +268,13 @@ def FedProx_importance_sampling(
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
-    metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
+    #metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
 
     for k, dl in enumerate(training_sets):
 
         loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
         acc_hist[0, k] = accuracy_dataset(model, dl)
-        metrics_record[0, k] = compute_metrics(model, dl)
+        #metrics_record[0, k] = compute_metrics(model, dl)
 
     # LOSS AND ACCURACY OF THE INITIAL MODEL
     server_loss = np.dot(weights, loss_hist[0])
@@ -337,7 +337,7 @@ def FedProx_importance_sampling(
 
             # get metrics (accuracy, f1, etc.) and save it to metrics_record
             # for round i+1 and the k-th batch of test data
-            metrics_record[i + 1, k] = compute_metrics(model, dl)
+            #metrics_record[i + 1, k] = compute_metrics(model, dl)
 
         server_loss = np.dot(weights, loss_hist[i + 1])
         server_acc = np.dot(weights, acc_hist[i + 1])
@@ -354,7 +354,7 @@ def FedProx_importance_sampling(
     #    save_pkl(server_hist, "server_history", file_name)
     save_pkl(loss_hist, "loss", file_name)
     save_pkl(acc_hist, "acc", file_name)
-    save_pkl(metrics_record, "metrics", file_name)
+    #save_pkl(metrics_record, "metrics", file_name)
 
     torch.save(
         model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth"
@@ -397,12 +397,12 @@ def FedProx_stratified_sampling(
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
-    metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
+    #metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
 
     for k, dl in enumerate(training_sets):
         loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
         acc_hist[0, k] = accuracy_dataset(model, dl)
-        metrics_record[0, k] = compute_metrics(model, dl)
+        #metrics_record[0, k] = compute_metrics(model, dl)
 
     # LOSS AND ACCURACY OF THE INITIAL MODEL
     server_loss = np.dot(weights, loss_hist[0])
@@ -489,7 +489,7 @@ def FedProx_stratified_sampling(
 
             # get metrics (accuracy, f1, etc.) and save it to metrics_record
             # for round i+1 and the k-th batch of test data
-            metrics_record[i + 1, k] = compute_metrics(model, dl)
+            #metrics_record[i + 1, k] = compute_metrics(model, dl)
 
         server_loss = np.dot(weights, loss_hist[i + 1])
         server_acc = np.dot(weights, acc_hist[i + 1])
@@ -505,7 +505,7 @@ def FedProx_stratified_sampling(
     # save_pkl(server_hist, "server_history", file_name)
     save_pkl(loss_hist, "loss", file_name)
     save_pkl(acc_hist, "acc", file_name)
-    save_pkl(metrics_record, "metrics", file_name)
+    #save_pkl(metrics_record, "metrics", file_name)
 
     torch.save(
         model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth"
@@ -552,12 +552,12 @@ def FedProx_stratified_dp_sampling(
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
-    metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
+    #metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
 
     for k, dl in enumerate(training_sets):
         loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
         acc_hist[0, k] = accuracy_dataset(model, dl)
-        metrics_record[0, k] = compute_metrics(model, dl)
+        #metrics_record[0, k] = compute_metrics(model, dl)
 
     # LOSS AND ACCURACY OF THE INITIAL MODEL
     server_loss = np.dot(weights, loss_hist[0])
@@ -657,7 +657,7 @@ def FedProx_stratified_dp_sampling(
 
             # get metrics (accuracy, f1, etc.) and save it to metrics_record
             # for round i+1 and the k-th batch of test data
-            metrics_record[i + 1, k] = compute_metrics(model, dl)
+            #metrics_record[i + 1, k] = compute_metrics(model, dl)
 
         server_loss = np.dot(weights, loss_hist[i + 1])
         server_acc = np.dot(weights, acc_hist[i + 1])
@@ -670,7 +670,7 @@ def FedProx_stratified_dp_sampling(
     # Save the training history
     save_pkl(loss_hist, "loss", file_name)
     save_pkl(acc_hist, "acc", file_name)
-    save_pkl(metrics_record, "metrics", file_name)
+    #save_pkl(metrics_record, "metrics", file_name)
 
     torch.save(
         model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth"
@@ -704,13 +704,13 @@ def FedSTS(
     # Initialize tracking metrics
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
-    metrics_record = np.zeros((n_iter + 1, K))
+    #metrics_record = np.zeros((n_iter + 1, K))
     
     # Calculate initial metrics
     for k, dl in enumerate(training_sets):
         loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
         acc_hist[0, k] = accuracy_dataset(model, dl)
-        metrics_record[0, k] = compute_metrics(model, dl)
+        #metrics_record[0, k] = compute_metrics(model, dl)
     
     # Initial model state
     server_loss = np.dot(weights, loss_hist[0])
@@ -810,7 +810,7 @@ def FedSTS(
         
         for k, dl in enumerate(testing_sets):
             acc_hist[i + 1, k] = accuracy_dataset(model, dl)
-            metrics_record[i + 1, k] = compute_metrics(model, dl)
+            #metrics_record[i + 1, k] = compute_metrics(model, dl)
         
         server_loss = np.dot(weights, loss_hist[i + 1])
         server_acc = np.dot(weights, acc_hist[i + 1])
@@ -822,7 +822,7 @@ def FedSTS(
     # Save results
     save_pkl(loss_hist, "loss", file_name)
     save_pkl(acc_hist, "acc", file_name)
-    save_pkl(metrics_record, "metrics", file_name)
+    #save_pkl(metrics_record, "metrics", file_name)
     
     torch.save(model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth")
     
