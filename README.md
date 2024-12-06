@@ -1,3 +1,7 @@
+Google Colab Link: https://colab.research.google.com/drive/1-9u0vMrjcoQcXVXqSAP9ltl-yIz8MQxg
+
+
+
 # FedSTS: A Stratified Client Selection Framework for Consistently Fast Federated Learning
 
 A PyTorch implementation of our paper FedSTS: A Stratified Client Selection Framework for Consistently Fast Federated Learning.
