@@ -5,6 +5,9 @@ from math import floor
 from numpy.random import choice
 import torch
 from collections import defaultdict
+from sklearn import metrics
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 
 def get_num_cnt(args, list_dls_train):
     labels = []
@@ -36,10 +39,6 @@ def get_num_cnt(args, list_dls_train):
 
 
 def stratify_clients(args):
-    from sklearn import metrics
-    from sklearn.decomposition import PCA
-    from sklearn.cluster import KMeans
-
     partition_result_path = f"dataset/data_partition_result/{args.dataset}_{args.partition}.pkl"
     print("@@@ Start reading data_partition_result file：", partition_result_path, " @@@")
 
