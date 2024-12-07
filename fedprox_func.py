@@ -64,7 +64,7 @@ def get_compressed_gradients(model, training_sets, d_prime=2):
     #     all_indices.append(indices)
         
     # return np.array(all_compressed_grads), all_indices
-    def get_compressed_gradients(model, training_sets, d_prime=2):
+
     """Gets compressed gradient from all clients"""
     all_compressed_grads = []
     all_indices = []
