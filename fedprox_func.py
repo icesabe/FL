@@ -779,7 +779,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         chosen_p = np.zeros((N_STRATA, N_CLIENTS)).astype(float)
         for j, cls in enumerate(stratify_result):
             client_grad_norms = []
-            for k in in cls:
+            for k in cls:
                     # Find ||Z_t^k|| of this client and store it in an array
                     grad_norm = np.linalg.norm(compressed_grads[k])
                     client_grad_norms.append(grad_norm)
