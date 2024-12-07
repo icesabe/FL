@@ -29,6 +29,7 @@ def loss_classifier(predictions, labels):
     criterion = nn.CrossEntropyLoss()
     return criterion(predictions, labels)
 
+# TO BE REMOVED
 def get_compressed_gradients(model, training_sets, d_prime=2):
     """Gets compressed gradient from all clients"""
     all_compressed_grads = []
@@ -812,7 +813,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets)
 
     # Use compressed gradients for stratification
-    stratify_result = stratify_clients(args, compressed_grads)
+    stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
     #**********************
 
     allocation_number = []
