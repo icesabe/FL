@@ -166,7 +166,6 @@ def loss_dataset(model, train_data, loss_classifier):
     loss /= idx + 1 #average loss, idx is batch index
     return loss
 
-
 def local_learning(model, mu: float, optimizer, train_data, n_SGD: int, loss_classifier):
     model_0 = deepcopy(model)
 
@@ -196,7 +195,6 @@ def local_learning(model, mu: float, optimizer, train_data, n_SGD: int, loss_cla
         batch_loss.backward()
         optimizer.step()
 
-
 def FedProx_random_sampling(
     model,
     n_sampled,
@@ -216,14 +214,12 @@ def FedProx_random_sampling(
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
-    #metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
-
+    
     for k, dl in enumerate(training_sets):
 
         loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
         acc_hist[0, k] = accuracy_dataset(model, dl)
-        #metrics_record[0, k] = compute_metrics(model, dl)
-
+        
     # LOSS AND ACCURACY OF THE INITIAL MODEL
     server_loss = np.dot(weights, loss_hist[0])
     server_acc = np.dot(weights, acc_hist[0])
@@ -282,10 +278,6 @@ def FedProx_random_sampling(
         for k, dl in enumerate(testing_sets):
             acc_hist[i + 1, k] = accuracy_dataset(model, dl)
 
-            # get metrics (accuracy, f1, etc.) and save it to metrics_record
-            # for round i+1 and the k-th batch of test data
-            #metrics_record[i + 1, k] = compute_metrics(model, dl)
-
         server_loss = np.dot(weights, loss_hist[i + 1])
         server_acc = np.dot(weights, acc_hist[i + 1])
 
@@ -301,15 +293,12 @@ def FedProx_random_sampling(
     #    save_pkl(server_hist, "server_history", file_name)
     save_pkl(loss_hist, "loss", file_name)
     save_pkl(acc_hist, "acc", file_name)
-    # Also save the metrics
-    #save_pkl(metrics_record, "metrics", file_name)
 
     torch.save(
         model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth"
     )
 
     return model, loss_hist, acc_hist
-
 
 def FedProx_importance_sampling(
     model,
@@ -330,13 +319,11 @@ def FedProx_importance_sampling(
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
-    #metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
 
     for k, dl in enumerate(training_sets):
 
         loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
         acc_hist[0, k] = accuracy_dataset(model, dl)
-        #metrics_record[0, k] = compute_metrics(model, dl)
 
     # LOSS AND ACCURACY OF THE INITIAL MODEL
     server_loss = np.dot(weights, loss_hist[0])
@@ -397,10 +384,6 @@ def FedProx_importance_sampling(
         for k, dl in enumerate(testing_sets):
             acc_hist[i + 1, k] = accuracy_dataset(model, dl)
 
-            # get metrics (accuracy, f1, etc.) and save it to metrics_record
-            # for round i+1 and the k-th batch of test data
-            #metrics_record[i + 1, k] = compute_metrics(model, dl)
-
         server_loss = np.dot(weights, loss_hist[i + 1])
         server_acc = np.dot(weights, acc_hist[i + 1])
 
@@ -416,14 +399,12 @@ def FedProx_importance_sampling(
     #    save_pkl(server_hist, "server_history", file_name)
     save_pkl(loss_hist, "loss", file_name)
     save_pkl(acc_hist, "acc", file_name)
-    #save_pkl(metrics_record, "metrics", file_name)
 
     torch.save(
         model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth"
     )
 
     return model, loss_hist, acc_hist
-
 
 def FedProx_stratified_sampling(
     args,
@@ -459,12 +440,10 @@ def FedProx_stratified_sampling(
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
-    #metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
 
     for k, dl in enumerate(training_sets):
         loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
         acc_hist[0, k] = accuracy_dataset(model, dl)
-        #metrics_record[0, k] = compute_metrics(model, dl)
 
     # LOSS AND ACCURACY OF THE INITIAL MODEL
     server_loss = np.dot(weights, loss_hist[0])
@@ -549,10 +528,6 @@ def FedProx_stratified_sampling(
         for k, dl in enumerate(testing_sets):
             acc_hist[i + 1, k] = accuracy_dataset(model, dl)
 
-            # get metrics (accuracy, f1, etc.) and save it to metrics_record
-            # for round i+1 and the k-th batch of test data
-            #metrics_record[i + 1, k] = compute_metrics(model, dl)
-
         server_loss = np.dot(weights, loss_hist[i + 1])
         server_acc = np.dot(weights, acc_hist[i + 1])
 
@@ -567,14 +542,12 @@ def FedProx_stratified_sampling(
     # save_pkl(server_hist, "server_history", file_name)
     save_pkl(loss_hist, "loss", file_name)
     save_pkl(acc_hist, "acc", file_name)
-    #save_pkl(metrics_record, "metrics", file_name)
 
     torch.save(
         model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth"
     )
 
     return model, loss_hist, acc_hist
-
 
 def FedProx_stratified_dp_sampling(
     args,
@@ -614,12 +587,10 @@ def FedProx_stratified_dp_sampling(
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
-    #metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
 
     for k, dl in enumerate(training_sets):
         loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
         acc_hist[0, k] = accuracy_dataset(model, dl)
-        #metrics_record[0, k] = compute_metrics(model, dl)
 
     # LOSS AND ACCURACY OF THE INITIAL MODEL
     server_loss = np.dot(weights, loss_hist[0])
@@ -717,10 +688,6 @@ def FedProx_stratified_dp_sampling(
         for k, dl in enumerate(testing_sets):
             acc_hist[i + 1, k] = accuracy_dataset(model, dl)
 
-            # get metrics (accuracy, f1, etc.) and save it to metrics_record
-            # for round i+1 and the k-th batch of test data
-            #metrics_record[i + 1, k] = compute_metrics(model, dl)
-
         server_loss = np.dot(weights, loss_hist[i + 1])
         server_acc = np.dot(weights, acc_hist[i + 1])
 
@@ -732,7 +699,6 @@ def FedProx_stratified_dp_sampling(
     # Save the training history
     save_pkl(loss_hist, "loss", file_name)
     save_pkl(acc_hist, "acc", file_name)
-    #save_pkl(metrics_record, "metrics", file_name)
 
     torch.save(
         model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth"
@@ -779,6 +745,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
 
     # 3. Server computes the m_h *****************************************************
     # cal_allocation_number_NS uses Neyman allocation with N_h and S_h to calculate m_h
+    # Note: S_h is calculated using compressed gradients, not restored gradients
     allocation_number = []
     if config.WITH_ALLOCATION and not args.partition == 'shard':
         allocation_number = cal_allocation_number_NS(stratify_result, compressed_grads, SIZE_STRATA, args.sample_ratio)
@@ -786,12 +753,10 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
-    #metrics_record = np.zeros((n_iter + 1, K)) # to keep track of the performance (accuracy, f1, etc.) for each round and each client
 
     for k, dl in enumerate(training_sets):
         loss_hist[0, k] = float(loss_dataset(model, dl, loss_classifier).detach())
         acc_hist[0, k] = accuracy_dataset(model, dl)
-        #metrics_record[0, k] = compute_metrics(model, dl)
 
     # LOSS AND ACCURACY OF THE INITIAL MODEL
     server_loss = np.dot(weights, loss_hist[0])
@@ -809,14 +774,23 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         hatN = estimator.estimate()
         print(f"Estimated population size (hatN): {hatN}")
 
-        # Sampling clients based on stratification and privacy-preserving estimates
+        # 4. Server computes p_t^k ***************************************************
+        # Note: |Z_t^k|| is calculated using compressed gradients, not restored gradients
         chosen_p = np.zeros((N_STRATA, N_CLIENTS)).astype(float)
         for j, cls in enumerate(stratify_result):
-            for k in range(N_CLIENTS):
-                if k in cls:
-                    chosen_p[j][k] = round(1 / SIZE_STRATA[j], 12)
-        
+            client_grad_norms = []
+            for k in in cls:
+                    # Find ||Z_t^k|| of this client and store it in an array
+                    grad_norm = np.linalg.norm(compressed_grads[k])
+                    client_grad_norms.append(grad_norm)
 
+            # Find Summation of ||Z_t^k|| for this stratum
+            sum_norms = sum(client_grad_norms)
+            # Find p_t^k
+            for idx, k in enumerate(cls):
+                chosen_p[j][k] = round(client_grad_norms[idx] / sum_norms, 12)
+        
+        # Sampling clients based on stratification and privacy-preserving estimates
         if config.WITH_ALLOCATION and not args.partition == 'shard':
             selects = sample_clients_with_allocation(chosen_p, allocation_number)
         else:
@@ -889,10 +863,6 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         for k, dl in enumerate(testing_sets):
             acc_hist[i + 1, k] = accuracy_dataset(model, dl)
 
-            # get metrics (accuracy, f1, etc.) and save it to metrics_record
-            # for round i+1 and the k-th batch of test data
-            #metrics_record[i + 1, k] = compute_metrics(model, dl)
-
         server_loss = np.dot(weights, loss_hist[i + 1])
         server_acc = np.dot(weights, acc_hist[i + 1])
 
@@ -904,7 +874,6 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     # Save the training history
     save_pkl(loss_hist, "loss", file_name)
     save_pkl(acc_hist, "acc", file_name)
-    #save_pkl(metrics_record, "metrics", file_name)
 
     torch.save(
         model.state_dict(), f"saved_exp_info/final_model/{file_name}.pth"

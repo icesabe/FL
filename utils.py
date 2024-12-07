@@ -39,7 +39,6 @@ def get_num_cnt(args, list_dls_train):
     pd.set_option('display.max_rows', None)
     print(num_cnt_table)
 
-
 def stratify_clients(args):
     partition_result_path = f"dataset/data_partition_result/{args.dataset}_{args.partition}.pkl"
     print("@@@ Start reading data_partition_result file：", partition_result_path, " @@@")
@@ -95,12 +94,10 @@ def stratify_clients(args):
     # silhouette score ranges from -1 to 1, higher values indicate better-defined clusters
     return result
 
-
 def save_pkl(dictionnary, directory, file_name):
     """Save the dictionnary in the directory under the file_name with pickle"""
     with open(f"saved_exp_info/{directory}/{file_name}.pkl", "wb") as output:
         pickle.dump(dictionnary, output)
-
 
 def sample_clients_without_allocation(chosen_p, choice_num):
     n_clients = len(chosen_p[0])
@@ -114,7 +111,6 @@ def sample_clients_without_allocation(chosen_p, choice_num):
             sampled_clients[k * choice_num + n_th] = int(one_choice)
 
     return sampled_clients
-
 
 def sample_clients_with_allocation(chosen_p, allocation_number):
     n_clients = len(chosen_p[0])
@@ -130,7 +126,6 @@ def sample_clients_with_allocation(chosen_p, allocation_number):
                 sampled_clients.append(int(one_choice))
 
     return sampled_clients
-
 
 def cal_allocation_number(partition_result, stratify_result, sample_ratio):
     cohesion_list = []
