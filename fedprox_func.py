@@ -773,16 +773,16 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     # Use compressed gradients for stratification
     stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
 
-    # 3. Server computes the m_h *****************************************************
-    allocation_number = []
-    if config.WITH_ALLOCATION and not args.partition == 'shard':
-        partition_result = pickle.load(open(f"dataset/data_partition_result/{args.dataset}_{args.partition}.pkl", "rb"))
-        allocation_number = cal_allocation_number_NS(partition_result, stratify_result, args.sample_ratio)
-    print(allocation_number)
-
     N_STRATA = len(stratify_result)
     SIZE_STRATA = [len(cls) for cls in stratify_result]
     N_CLIENTS = sum(len(c) for c in stratify_result)  # number of clients
+
+    # 3. Server computes the m_h *****************************************************
+    # cal_allocation_number_NS uses Neyman allocation with N_h and S_h to calculate m_h
+    allocation_number = []
+    if config.WITH_ALLOCATION and not args.partition == 'shard':
+        allocation_number = cal_allocation_number_NS(stratify_result, compressed_grads, SIZE_STRATA, args.sample_ratio)
+    print(allocation_number)
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
@@ -809,7 +809,6 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         hatN = estimator.estimate()
         print(f"Estimated population size (hatN): {hatN}")
 
-        # 4. Server updates p_t^k ***************************************************
         # Sampling clients based on stratification and privacy-preserving estimates
         chosen_p = np.zeros((N_STRATA, N_CLIENTS)).astype(float)
         for j, cls in enumerate(stratify_result):

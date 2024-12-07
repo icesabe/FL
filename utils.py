@@ -169,6 +169,48 @@ def cal_allocation_number(partition_result, stratify_result, sample_ratio):
 
     return allocation_number
 
+def cal_allocation_number_NS(stratify_result, compressed_grads, stratum_size, sample_ratio):
+    """
+
+    """
+    Nh_list = stratum_size
+    cohesion_list = []
+
+    for row_strata in stratify_result:
+        dist = np.zeros(len(row_strata))
+
+        for j in range(len(row_strata)):
+            for k in range(len(row_strata)):
+                if k == j:
+                    pass
+                else:
+                    dist[j] += np.sqrt(np.sum(np.square(compressed_grads[row_strata[j]] - compressed_grads[row_strata[k]])))
+                    #sum of Euclidean distances between each client and all other clients in the same stratum
+        dist /= len(row_strata) # each row is a stratum
+        cohesion_list.append(dist)
+
+    Sh_list = np.zeros(len(cohesion_list))
+    for i, strata_cohesion in enumerate(cohesion_list):
+        Sh_list[i] = sum(strata_cohesion) / len(strata_cohesion)
+
+    neyman_weights = [nh * sh for nh, sh in zip(Nh_list, Sh_list)]
+    total_weight = sum(neyman_weights)
+
+    allocation_number = np.zeros(len(neyman_weights))
+    for i, weight in enumerate(neyman_weights):
+        allocation_number[i] = floor(sample_ratio * 100 * weight /  total_weight)
+
+    allocation_number = allocation_number.astype(int)
+
+    zero_num = (allocation_number == 0).sum()
+    i = 0
+    while np.sum(allocation_number) < sample_ratio * 100:
+        if allocation_number[i] == 0:
+            allocation_number[i] += max(1, int(round((sample_ratio * 100 - np.sum(allocation_number)) / zero_num)))
+        i += 1
+
+    return allocation_number
+
 class Estimator:
     def __init__(self,train_users,alpha,M):
         self.M = M
