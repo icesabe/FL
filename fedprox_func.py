@@ -30,13 +30,51 @@ def loss_classifier(predictions, labels):
     return criterion(predictions, labels)
 
 def get_compressed_gradients(model, training_sets, d_prime=2):
+    # """Gets compressed gradient from all clients"""
+    # all_compressed_grads = []
+    # all_indices = []
+    
+    # for client_id, train_data in enumerate(training_sets):
+    #     # Get one batch gradient
+    #     local_model = deepcopy(model)
+    #     for features, labels in train_data:
+    #         if config.USE_GPU:
+    #             features = features.cuda()
+    #             labels = labels.cuda()
+                
+    #         predictions = local_model(features)
+    #         loss = loss_classifier(predictions, labels)
+    #         loss.backward()
+    #         break  # Only use first batch
+            
+    #     # Flatten gradient
+    #     grad = []
+    #     for param in local_model.parameters():
+    #         if param.grad is not None:
+    #             grad.append(param.grad.data.flatten())
+    #     flat_grad = torch.cat(grad)
+        
+    #     # Compress using k-means
+    #     grad_np = flat_grad.cpu().detach().numpy()
+    #     kmeans = KMeans(n_clusters=d_prime, random_state=0)
+    #     indices = kmeans.fit_predict(grad_np.reshape(-1, 1))
+    #     centers = kmeans.cluster_centers_.flatten()
+        
+    #     all_compressed_grads.append(centers)
+    #     all_indices.append(indices)
+        
+    # return np.array(all_compressed_grads), all_indices
+    def get_compressed_gradients(model, training_sets, d_prime=2):
     """Gets compressed gradient from all clients"""
     all_compressed_grads = []
     all_indices = []
     
     for client_id, train_data in enumerate(training_sets):
-        # Get one batch gradient
+        # Get gradient from all batches
         local_model = deepcopy(model)
+        accumulated_grad = None
+        batch_count = 0
+        
         for features, labels in train_data:
             if config.USE_GPU:
                 features = features.cuda()
@@ -45,13 +83,29 @@ def get_compressed_gradients(model, training_sets, d_prime=2):
             predictions = local_model(features)
             loss = loss_classifier(predictions, labels)
             loss.backward()
-            break  # Only use first batch
             
-        # Flatten gradient
+            # Accumulate gradients
+            if accumulated_grad is None:
+                accumulated_grad = []
+                for param in local_model.parameters():
+                    if param.grad is not None:
+                        accumulated_grad.append(param.grad.data.clone())
+            else:
+                for i, param in enumerate(local_model.parameters()):
+                    if param.grad is not None:
+                        accumulated_grad[i] += param.grad.data
+            
+            batch_count += 1
+            local_model.zero_grad()  # Clear gradients for next batch
+        
+        # Average the accumulated gradients
+        for grad in accumulated_grad:
+            grad /= batch_count
+            
+        # Flatten averaged gradient
         grad = []
-        for param in local_model.parameters():
-            if param.grad is not None:
-                grad.append(param.grad.data.flatten())
+        for acc_grad in accumulated_grad:
+            grad.append(acc_grad.flatten())
         flat_grad = torch.cat(grad)
         
         # Compress using k-means
