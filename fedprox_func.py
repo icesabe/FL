@@ -64,30 +64,6 @@ def get_compressed_gradients(model, training_sets, d_prime=2):
         all_indices.append(indices)
         
     return np.array(all_compressed_grads), all_indices
-    """
-    Calculates number of clients to sample from each stratum
-    based on size and variance
-    """
-    # Calculate variances and sizes
-    variances = [calculate_stratum_variance(gradients, stratum) for stratum in strata]
-    sizes = [len(stratum) for stratum in strata]
-    
-    # Calculate allocation weights
-    weights = [size * var for size, var in zip(sizes, variances)]
-    total_weight = sum(weights)
-    
-    if total_weight == 0:
-        return [total_samples // len(strata)] * len(strata)
-    
-    # Allocate samples proportionally
-    allocations = [int(total_samples * w / total_weight) for w in weights]
-    
-    # Distribute any remaining samples
-    remaining = total_samples - sum(allocations)
-    for i in range(remaining):
-        allocations[i] += 1
-    
-    return allocations
 
 def stratify_clients_compressed_gradients(args, compressed_grads):
     """
@@ -124,7 +100,6 @@ def stratify_clients_compressed_gradients(args, compressed_grads):
     print("strata_num：", args.strata_num, " silhouette_score：", s_score, "\n")
     
     return result
-
 
 def accuracy_dataset(model, dataset):
     """Compute the accuracy {}% of `model` on `test_data`"""
