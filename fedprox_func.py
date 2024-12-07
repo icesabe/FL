@@ -29,43 +29,6 @@ def loss_classifier(predictions, labels):
     criterion = nn.CrossEntropyLoss()
     return criterion(predictions, labels)
 
-# TO BE REMOVED
-def get_compressed_gradients(model, training_sets, d_prime=2):
-    """Gets compressed gradient from all clients"""
-    all_compressed_grads = []
-    all_indices = []
-    
-    for client_id, train_data in enumerate(training_sets):
-        # Get one batch gradient
-        local_model = deepcopy(model)
-        for features, labels in train_data:
-            if config.USE_GPU:
-                features = features.cuda()
-                labels = labels.cuda()
-                
-            predictions = local_model(features)
-            loss = loss_classifier(predictions, labels)
-            loss.backward()
-            break  # Only use first batch
-            
-        # Flatten gradient
-        grad = []
-        for param in local_model.parameters():
-            if param.grad is not None:
-                grad.append(param.grad.data.flatten())
-        flat_grad = torch.cat(grad)
-        
-        # Compress using k-means
-        grad_np = flat_grad.cpu().detach().numpy()
-        kmeans = KMeans(n_clusters=d_prime, random_state=0)
-        indices = kmeans.fit_predict(grad_np.reshape(-1, 1))
-        centers = kmeans.cluster_centers_.flatten()
-        
-        all_compressed_grads.append(centers)
-        all_indices.append(indices)
-        
-    return np.array(all_compressed_grads), all_indices
-
 def client_compress_gradient(client_model, train_data, d_prime=2):
     """
     Client-side gradient compression
@@ -802,24 +765,19 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     weights = n_samples / np.sum(n_samples)
     print("Clients' weights:", weights)
 
-    #**********************
-    # Get compressed gradients from all clients
-    #compressed_grads, grad_indices = get_compressed_gradients(model, training_sets)
-    
-    # Use compressed gradients for stratification
-    #stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
-
+    # 1. each client sends compressed gradients **************************************
     # Get compressed gradients from all clients
     compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets)
 
+    # 2. Stratify clients based on compressed gradients ******************************
     # Use compressed gradients for stratification
     stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
-    #**********************
 
+    # 3. Server computes the m_h *****************************************************
     allocation_number = []
     if config.WITH_ALLOCATION and not args.partition == 'shard':
         partition_result = pickle.load(open(f"dataset/data_partition_result/{args.dataset}_{args.partition}.pkl", "rb"))
-        allocation_number = cal_allocation_number(partition_result, stratify_result, args.sample_ratio)
+        allocation_number = cal_allocation_number_NS(partition_result, stratify_result, args.sample_ratio)
     print(allocation_number)
 
     N_STRATA = len(stratify_result)
@@ -851,6 +809,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         hatN = estimator.estimate()
         print(f"Estimated population size (hatN): {hatN}")
 
+        # 4. Server updates p_t^k ***************************************************
         # Sampling clients based on stratification and privacy-preserving estimates
         chosen_p = np.zeros((N_STRATA, N_CLIENTS)).astype(float)
         for j, cls in enumerate(stratify_result):
