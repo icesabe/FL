@@ -775,7 +775,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         print(f"Estimated population size (hatN): {hatN}")
 
         # 4. Server computes p_t^k ***************************************************
-        # Note: |Z_t^k|| is calculated using compressed gradients, not restored gradients
+        # Note: ||Z_t^k|| is calculated using compressed gradients, not restored gradients
         chosen_p = np.zeros((N_STRATA, N_CLIENTS)).astype(float)
         for j, cls in enumerate(stratify_result):
             client_grad_norms = []
