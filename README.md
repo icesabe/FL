@@ -1,6 +1,6 @@
 Google Colab Link: https://colab.research.google.com/drive/1-9u0vMrjcoQcXVXqSAP9ltl-yIz8MQxg <br />
 <br />
-🟥 As of December 7, 2024, 5:24 PM 🟥 <br />
+🟥 As of December 7, 2024, 5:25 PM 🟥 <br />
 **FedProx_stratified_dp_sampling_compressed_gradients()** in fedprox_func.py is different from FedProx_stratified_dp_sampling() in the following ways: <br />
 1. Uses compressed gradients of each client to stratify the clients. <br />
        - The functions used are client_compress_gradient(), collect_compressed_gradients(), and stratify_clients_compressed_gradients().
@@ -12,8 +12,8 @@ The code above needs to be double checked. More changes still need to be made so
 <br />
 If time permits: <br />
 1. Add exception checks to check for division by zero. <br />
-2. Reorganize functions (put some functions in fedprox_func.py to utils.py). <br />
-3. Use recovered or restored gradients instead of compressed gradients in using Neyman allocation to find m_h and (p_t)^k.
+2. Reorganize code (put some functions in fedprox_func.py to utils.py). <br />
+3. Use recovered or restored gradients instead of compressed gradients in finding m_h and (p_t)^k.
 
 
 <br />
