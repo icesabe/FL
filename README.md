@@ -56,7 +56,7 @@ Here we provide the implementation of Stratified Client Selection Scheme along w
 - The privacy parameter `alpha` used in DP sampling (default=0.5)
 - The maximum response value `M` for the Estimator in DP sampling (default=300)
 - The desired sample size `K_desired` for local data sampling (default=2048)
-
+- The d_prime parameter (previously fixed at 2).
 + To train and evaluate on MNIST:
 ```
 
