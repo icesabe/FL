@@ -573,16 +573,25 @@ def FedProx_stratified_dp_sampling(
     weights = n_samples / np.sum(n_samples)
     print("Clients' weights:", weights)
 
-    stratify_result = stratify_clients(args)
-    allocation_number = []
-    if config.WITH_ALLOCATION and not args.partition == 'shard':
-        partition_result = pickle.load(open(f"dataset/data_partition_result/{args.dataset}_{args.partition}.pkl", "rb"))
-        allocation_number = cal_allocation_number(partition_result, stratify_result, args.sample_ratio)
-    print(allocation_number)
+    # 1. each client sends compressed gradients **************************************
+    # Get compressed gradients from all clients
+    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime)
+
+    # 2. Stratify clients based on compressed gradients ******************************
+    # Use compressed gradients for stratification
+    stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
 
     N_STRATA = len(stratify_result)
     SIZE_STRATA = [len(cls) for cls in stratify_result]
     N_CLIENTS = sum(len(c) for c in stratify_result)  # number of clients
+
+    # 3. Server computes the m_h *****************************************************
+    # cal_allocation_number_NS uses Neyman allocation with N_h and S_h to calculate m_h
+    # Note: S_h is calculated using compressed gradients, not restored gradients
+    allocation_number = []
+    if config.WITH_ALLOCATION and not args.partition == 'shard':
+        allocation_number = cal_allocation_number_NS(stratify_result, compressed_grads, SIZE_STRATA, args.sample_ratio)
+    print(allocation_number)
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
@@ -717,39 +726,36 @@ def FedProx_stratified_sampling_compressed_gradients(
     file_name: str,
     decay,
     mu,
-    alpha: float,  # Privacy parameter from FedSampling
-    M: int,        # Maximum response value for the Estimator
-    K_desired: int, # Desired sample size
+    K_desired: int,
+    d_prime: int,
 ):  
-    # Initialize Estimator for privacy-preserving sampling
-    train_users = {k: range(len(dl.dataset)) for k, dl in enumerate(training_sets)}
-    estimator = Estimator(train_users, alpha, M)
+    """
+    Federated learning with stratified sampling using compressed gradients (non-DP version)
+    """
+    print("Running FedProx with stratified sampling using compressed gradients")
 
     K = len(training_sets)  # number of clients
     n_samples = np.array([len(db.dataset) for db in training_sets])
     weights = n_samples / np.sum(n_samples)
     print("Clients' weights:", weights)
 
-    # 1. each client sends compressed gradients **************************************
-    # Get compressed gradients from all clients
-    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets)
+    # 1. Get compressed gradients from all clients
+    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime=args.d_prime)
 
-    # 2. Stratify clients based on compressed gradients ******************************
-    # Use compressed gradients for stratification
+    # 2. Stratify clients based on compressed gradients
     stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
 
     N_STRATA = len(stratify_result)
     SIZE_STRATA = [len(cls) for cls in stratify_result]
-    N_CLIENTS = sum(len(c) for c in stratify_result)  # number of clients
+    N_CLIENTS = sum(len(c) for c in stratify_result)
 
-    # 3. Server computes the m_h *****************************************************
-    # cal_allocation_number_NS uses Neyman allocation with N_h and S_h to calculate m_h
-    # Note: S_h is calculated using compressed gradients, not restored gradients
+    # 3. Calculate allocation numbers if needed
     allocation_number = []
     if config.WITH_ALLOCATION and not args.partition == 'shard':
         allocation_number = cal_allocation_number_NS(stratify_result, compressed_grads, SIZE_STRATA, args.sample_ratio)
-    print(allocation_number)
+    print("Allocation numbers:", allocation_number)
 
+    # Initialize history tracking
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
 
@@ -769,19 +775,13 @@ def FedProx_stratified_sampling_compressed_gradients(
         clients_models = []
         sampled_clients_for_grad = []
 
-        # Estimate the total population size with privacy preservation
-        hatN = estimator.estimate()
-        print(f"Estimated population size (hatN): {hatN}")
-
-        # 4. Server computes p_t^k ***************************************************
-        # Note: ||Z_t^k|| is calculated using compressed gradients, not restored gradients
+        # 4. Compute sampling probabilities based on gradient norms
         chosen_p = np.zeros((N_STRATA, N_CLIENTS)).astype(float)
         for j, cls in enumerate(stratify_result):
             client_grad_norms = []
             for k in cls:
-                    # Find ||Z_t^k|| of this client and store it in an array
-                    grad_norm = np.linalg.norm(compressed_grads[k])
-                    client_grad_norms.append(grad_norm)
+                grad_norm = np.linalg.norm(compressed_grads[k])
+                client_grad_norms.append(grad_norm)
 
             # Find Summation of ||Z_t^k|| for this stratum
             sum_norms = sum(client_grad_norms)
@@ -789,7 +789,7 @@ def FedProx_stratified_sampling_compressed_gradients(
             for idx, k in enumerate(cls):
                 chosen_p[j][k] = round(client_grad_norms[idx] / sum_norms, 12)
         
-        # Sampling clients based on stratification and privacy-preserving estimates
+        # Sampling clients based on stratification
         if config.WITH_ALLOCATION and not args.partition == 'shard':
             selects = sample_clients_with_allocation(chosen_p, allocation_number)
         else:
@@ -807,22 +807,33 @@ def FedProx_stratified_sampling_compressed_gradients(
         for k in selected:
             local_model = deepcopy(model)
             local_optimizer = optim.SGD(local_model.parameters(), lr=lr)
+            # Calculate sampling probability based on actual dataset size
+            total_samples = len(training_sets[k].dataset)
+            sampling_prob = K_desired / total_samples
+            
+            # Sample data points
+            sampled_features = []
+            sampled_labels = []
+            
+            for features, labels in training_sets[k]:
+                sample_mask = np.random.binomial(n=1, p=sampling_prob, size=len(features))
+                selected_features = features[sample_mask == 1]
+                selected_labels = labels[sample_mask == 1]
+                
+                if len(selected_features) > 0:
+                    sampled_features.append(selected_features)
+                    sampled_labels.append(selected_labels)
 
-            # local data sampling
-            sampled_features, sampled_labels = local_data_sampling(
-                training_sets[k], 
-                K_desired, 
-                hatN
-            )
-
-            if sampled_features is not None and len(sampled_features) > 0:
-               
+            if sampled_features:
+                sampled_features = torch.cat(sampled_features)
+                sampled_labels = torch.cat(sampled_labels)
                 sampled_dataset = torch.utils.data.TensorDataset(sampled_features, sampled_labels)
                 sampled_loader = torch.utils.data.DataLoader(
                     sampled_dataset,
                     batch_size=args.batch_size,
                     shuffle=True
                 )
+
             # Local training with FedProx
             local_learning(
                 local_model,
@@ -873,7 +884,6 @@ def FedProx_stratified_sampling_compressed_gradients(
 
         print(f"====> i: {i + 1} Loss: {server_loss} Server Test Accuracy: {server_acc}")
 
-        # Decrease the learning rate
         lr *= decay
 
     # Save the training history
@@ -901,6 +911,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     alpha: float,  # Privacy parameter from FedSampling
     M: int,        # Maximum response value for the Estimator
     K_desired: int, # Desired sample size
+    d_prime: int, # Desired sample size
 ):  
     # Initialize Estimator for privacy-preserving sampling
     train_users = {k: range(len(dl.dataset)) for k, dl in enumerate(training_sets)}
@@ -913,7 +924,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
 
     # 1. each client sends compressed gradients **************************************
     # Get compressed gradients from all clients
-    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets)
+    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime=args.d_prime)
 
     # 2. Stratify clients based on compressed gradients ******************************
     # Use compressed gradients for stratification
@@ -1142,7 +1153,25 @@ def run(args, model_mnist, n_sampled, list_dls_train, list_dls_test, file_name):
             args.M,
             args.K_desired,
             )
-    
+    """RUN FEDAVG WITH dp sampling and compressed client gradients"""
+    if (args.sampling == "comp_grads") and (
+            not os.path.exists(f"saved_exp_info/acc/{file_name}.pkl") or args.force
+    ):
+        FedProx_stratified_sampling_compressed_gradients(
+            args,
+            model_mnist,
+            n_sampled,
+            list_dls_train,
+            list_dls_test,
+            args.n_iter,
+            args.n_SGD,
+            args.lr,
+            file_name,
+            args.decay,
+            args.mu,
+            args.K_desired,
+            args.d_prime,
+            )
     """RUN FEDAVG WITH dp sampling and compressed client gradients"""
     if (args.sampling == "dp_comp_grads") and (
             not os.path.exists(f"saved_exp_info/acc/{file_name}.pkl") or args.force
