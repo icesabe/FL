@@ -32,7 +32,7 @@ def weights_clients(dataset: str):
     weights = weights / np.sum(weights)
     return weights
 
-def plot_dirichlet_distribution(alpha, n_classes=10, n_clients=100):
+def plot_dirichlet_distribution(alpha, n_classes=10, n_clients=100, dataset="CIFAR10"):
     """Plot Dirichlet distribution effects for a specific alpha value"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     
@@ -43,7 +43,7 @@ def plot_dirichlet_distribution(alpha, n_classes=10, n_clients=100):
     im = ax1.imshow(data.T, aspect='auto', cmap='YlOrRd')
     ax1.set_xlabel('Clients')
     ax1.set_ylabel('Classes')
-    ax1.set_title(f'Class Distribution (α = {alpha})')
+    ax1.set_title(f'{dataset} Class Distribution (α = {alpha})')
     plt.colorbar(im, ax=ax1, label='Percentage')
     
     # Plot total samples per class (column b)
@@ -51,17 +51,17 @@ def plot_dirichlet_distribution(alpha, n_classes=10, n_clients=100):
     ax2.bar(range(n_classes), total_samples)
     ax2.set_xlabel('Classes')
     ax2.set_ylabel('Total Samples')
-    ax2.set_title(f'Samples per Class (α = {alpha})')
+    ax2.set_title(f'{dataset} Samples per Class (α = {alpha})')
     
     plt.tight_layout()
-    plt.savefig(f'plots/dirichlet_distribution_alpha_{alpha}.pdf')
+    plt.savefig(f'plots/{dataset}_dirichlet_distribution_alpha_{alpha}.pdf')
     plt.close()
 
-def plot_stratification_results(alpha, n_strata=10, n_clients=100):
+def plot_stratification_results(alpha, n_strata=10, n_clients=100, dataset="CIFAR10"):
     """Plot stratification results for a specific alpha value"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     
-    file_name = f"dataset/stratify_result/CIFAR10_dir_{alpha}.pkl"
+    file_name = f"dataset/stratify_result/{dataset}_dir_{alpha}.pkl"
     if os.path.exists(file_name):
         with open(file_name, 'rb') as f:
             strata = pickle.load(f)
@@ -71,7 +71,7 @@ def plot_stratification_results(alpha, n_strata=10, n_clients=100):
         ax1.bar(range(len(strata_sizes)), strata_sizes)
         ax1.set_xlabel('Strata')
         ax1.set_ylabel('Number of Clients')
-        ax1.set_title(f'Strata Sizes (α = {alpha})')
+        ax1.set_title(f'{dataset} Strata Sizes (α = {alpha})')
         
         # Plot client distribution (column b)
         client_matrix = np.zeros((n_clients, n_strata))
@@ -81,14 +81,14 @@ def plot_stratification_results(alpha, n_strata=10, n_clients=100):
         im = ax2.imshow(client_matrix, aspect='auto', cmap='binary')
         ax2.set_xlabel('Strata')
         ax2.set_ylabel('Clients')
-        ax2.set_title(f'Client Distribution (α = {alpha})')
+        ax2.set_title(f'{dataset} Client Distribution (α = {alpha})')
         plt.colorbar(im, ax=ax2)
     
     plt.tight_layout()
-    plt.savefig(f'plots/stratification_results_alpha_{alpha}.pdf')
+    plt.savefig(f'plots/{dataset}_stratification_results_alpha_{alpha}.pdf')
     plt.close()
 
-def plot_training_metrics(methods, labels, n_SGD, q, mu, alpha, smooth=True, dataset="CIFAR10"):
+def plot_training_metrics(methods, labels, n_SGD, batch_size, n_iter, q, mu, alpha, smooth=True, dataset="CIFAR10"):
     """Plot training metrics (accuracy and loss) for multiple methods with specific sampling ratio"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
     
@@ -96,7 +96,7 @@ def plot_training_metrics(methods, labels, n_SGD, q, mu, alpha, smooth=True, dat
     
     # Plot accuracy
     for method, label, color in zip(methods, labels, colors):
-        file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b200_n{n_SGD}_i100_s10_d1.0_m{mu}_s0"
+        file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b{batch_size}_n{n_SGD}_i{n_iter}_s10_d1.0_m{mu}_s0"
         
         if os.path.exists(f"saved_exp_info/acc/{file_name}.pkl"):
             history = load_pkl('acc', file_name)
@@ -107,13 +107,13 @@ def plot_training_metrics(methods, labels, n_SGD, q, mu, alpha, smooth=True, dat
     
     ax1.set_xlabel('Communication Rounds')
     ax1.set_ylabel('Accuracy')
-    ax1.set_title(f'Test Accuracy (α = {alpha})')
+    ax1.set_title(f'{dataset} Test Accuracy (α = {alpha})')
     ax1.legend()
     ax1.grid(True)
     
     # Plot loss
     for method, label, color in zip(methods, labels, colors):
-        file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b200_n{n_SGD}_i100_s10_d1.0_m{mu}_s0"
+        file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b{batch_size}_n{n_SGD}_i{n_iter}_s10_d1.0_m{mu}_s0"
         
         if os.path.exists(f"saved_exp_info/loss/{file_name}.pkl"):
             history = load_pkl('loss', file_name)
@@ -124,15 +124,15 @@ def plot_training_metrics(methods, labels, n_SGD, q, mu, alpha, smooth=True, dat
     
     ax2.set_xlabel('Communication Rounds')
     ax2.set_ylabel('Loss')
-    ax2.set_title(f'Training Loss (α = {alpha})')
+    ax2.set_title(f'{dataset} Training Loss (α = {alpha})')
     ax2.legend()
     ax2.grid(True)
     
     plt.tight_layout()
-    plt.savefig(f'plots/algorithm_comparison_alpha_{alpha}_q_{q}.pdf')
+    plt.savefig(f'plots/{dataset}_algorithm_comparison_alpha_{alpha}_q_{q}.pdf')
     plt.close()
 
-def plot_algorithm_comparison(metric, n_SGD, q, mu, alpha, smooth=True, dataset="CIFAR10"):
+def plot_algorithm_comparison(metric, n_SGD, batch_size, n_iter, q, mu, alpha, smooth=True, dataset="CIFAR10"):
     """Plot comparison of the three algorithms with specific alpha and sampling ratio"""
     methods = ['ours', 'comp_grads', 'dp_comp_grads']
     labels = ['Stratified', 'Compressed Gradients', 'DP + Compressed']
@@ -141,6 +141,8 @@ def plot_algorithm_comparison(metric, n_SGD, q, mu, alpha, smooth=True, dataset=
         methods=methods,
         labels=labels,
         n_SGD=n_SGD,
+        batch_size=batch_size,
+        n_iter=n_iter,
         q=q,
         mu=mu,
         alpha=alpha,

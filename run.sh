@@ -127,7 +127,7 @@ for q in 0.1 0.2 0.3 0.5; do
 done
 ######################################################################################
 # Or generate all plots at once for a specific combination of parameters
-# python main_plots.py --plot_type=all --alpha=0.001 --q=0.1 --dataset=MNIST
+# python main_plots.py --plot_type comparison --dataset MNIST --alpha 0.001 --q 0.1 --n_SGD 3 --batch_size 200 --n_iter 99
 ######################################################################################
 # Usage instructions:
 # 1. Make the script executable:

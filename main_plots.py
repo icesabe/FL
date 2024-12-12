@@ -15,14 +15,23 @@ def parse_args():
                       choices=['dirichlet', 'stratification', 'comparison', 'all'],
                       help='Type of plot to generate')
     
+    # Add dataset parameter
+    parser.add_argument('--dataset', type=str, default='CIFAR10',
+                      choices=['MNIST', 'CIFAR10'],
+                      help='Dataset to plot results for')
+    
     # Parameters for all plots
     parser.add_argument('--alpha', type=float, required=True,
                       choices=[0.001, 0.01],
                       help='Alpha value for Dirichlet distribution')
     
     # Parameters for algorithm comparison
-    parser.add_argument('--n_SGD', type=int, default=80,
+    parser.add_argument('--n_SGD', type=int, default=3,
                       help='Number of SGD steps')
+    parser.add_argument('--batch_size', type=int, default=200,
+                      help='Batch size')
+    parser.add_argument('--n_iter', type=int, default=99,
+                      help='Number of iterations')
     parser.add_argument('--q', type=float, required=True,
                       choices=[0.1, 0.2, 0.3, 0.5],
                       help='Sampling ratio (q)')
@@ -49,7 +58,8 @@ def main():
         plot_dirichlet_distribution(
             alpha=args.alpha,
             n_classes=args.n_classes,
-            n_clients=args.n_clients
+            n_clients=args.n_clients,
+            dataset=args.dataset
         )
     
     if args.plot_type in ['stratification', 'all']:
@@ -57,7 +67,8 @@ def main():
         plot_stratification_results(
             alpha=args.alpha,
             n_strata=args.n_strata,
-            n_clients=args.n_clients
+            n_clients=args.n_clients,
+            dataset=args.dataset
         )
     
     if args.plot_type in ['comparison', 'all']:
@@ -65,10 +76,13 @@ def main():
         plot_algorithm_comparison(
             metric="both",
             n_SGD=args.n_SGD,
+            batch_size=args.batch_size,
+            n_iter=args.n_iter,
             q=args.q,
             mu=args.mu,
             alpha=args.alpha,
-            smooth=args.smooth
+            smooth=args.smooth,
+            dataset=args.dataset
         )
 
 if __name__ == "__main__":
