@@ -88,7 +88,7 @@ def plot_stratification_results(alpha, n_strata=10, n_clients=100, dataset="CIFA
     plt.savefig(f'plots/{dataset}_stratification_results_alpha_{alpha}.pdf')
     plt.close()
 
-def plot_training_metrics(methods, labels, n_SGD, batch_size, n_iter, q, mu, alpha, smooth=True, dataset="CIFAR10"):
+def plot_training_metrics(methods, labels, n_SGD, batch_size, n_iter, q, mu, alpha, smooth=True, dataset="CIFAR10", K_desired=2048, d_prime=9, M=100, dp_alpha=0.1616):
     """Plot training metrics (accuracy and loss) for multiple methods with specific sampling ratio"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
     
@@ -96,7 +96,11 @@ def plot_training_metrics(methods, labels, n_SGD, batch_size, n_iter, q, mu, alp
     
     # Plot accuracy
     for method, label, color in zip(methods, labels, colors):
-        file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b{batch_size}_n{n_SGD}_i{n_iter}_s10_d1.0_m{mu}_s0"
+        # Construct file name based on method and parameters
+        if method == 'dp_comp_grads':
+            file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b{batch_size}_n{n_SGD}_i{n_iter}_s10_d1.0_m{mu}_s0_K{K_desired}_d{d_prime}_a{dp_alpha}_M{M}"
+        else:
+            file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b{batch_size}_n{n_SGD}_i{n_iter}_s10_d1.0_m{mu}_s0_K{K_desired}_d{d_prime}"
         
         if os.path.exists(f"saved_exp_info/acc/{file_name}.pkl"):
             history = load_pkl('acc', file_name)
@@ -107,13 +111,17 @@ def plot_training_metrics(methods, labels, n_SGD, batch_size, n_iter, q, mu, alp
     
     ax1.set_xlabel('Communication Rounds')
     ax1.set_ylabel('Accuracy')
-    ax1.set_title(f'{dataset} Test Accuracy (α = {alpha})')
+    ax1.set_title(f'{dataset} Test Accuracy (Non-IID α = {alpha})')
     ax1.legend()
     ax1.grid(True)
     
     # Plot loss
     for method, label, color in zip(methods, labels, colors):
-        file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b{batch_size}_n{n_SGD}_i{n_iter}_s10_d1.0_m{mu}_s0"
+        # Construct file name based on method and parameters
+        if method == 'dp_comp_grads':
+            file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b{batch_size}_n{n_SGD}_i{n_iter}_s10_d1.0_m{mu}_s0_K{K_desired}_d{d_prime}_a{dp_alpha}_M{M}"
+        else:
+            file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b{batch_size}_n{n_SGD}_i{n_iter}_s10_d1.0_m{mu}_s0_K{K_desired}_d{d_prime}"
         
         if os.path.exists(f"saved_exp_info/loss/{file_name}.pkl"):
             history = load_pkl('loss', file_name)
@@ -124,7 +132,7 @@ def plot_training_metrics(methods, labels, n_SGD, batch_size, n_iter, q, mu, alp
     
     ax2.set_xlabel('Communication Rounds')
     ax2.set_ylabel('Loss')
-    ax2.set_title(f'{dataset} Training Loss (α = {alpha})')
+    ax2.set_title(f'{dataset} Training Loss (Non-IID α = {alpha})')
     ax2.legend()
     ax2.grid(True)
     
@@ -132,7 +140,7 @@ def plot_training_metrics(methods, labels, n_SGD, batch_size, n_iter, q, mu, alp
     plt.savefig(f'plots/{dataset}_algorithm_comparison_alpha_{alpha}_q_{q}.pdf')
     plt.close()
 
-def plot_algorithm_comparison(metric, n_SGD, batch_size, n_iter, q, mu, alpha, smooth=True, dataset="CIFAR10"):
+def plot_algorithm_comparison(metric, n_SGD, batch_size, n_iter, q, mu, alpha, smooth=True, dataset="CIFAR10", K_desired=2048, d_prime=9, M=100, dp_alpha=0.1616):
     """Plot comparison of the three algorithms with specific alpha and sampling ratio"""
     methods = ['ours', 'comp_grads', 'dp_comp_grads']
     labels = ['Stratified', 'Compressed Gradients', 'DP + Compressed']
@@ -147,7 +155,11 @@ def plot_algorithm_comparison(metric, n_SGD, batch_size, n_iter, q, mu, alpha, s
         mu=mu,
         alpha=alpha,
         smooth=smooth,
-        dataset=dataset
+        dataset=dataset,
+        K_desired=K_desired,
+        d_prime=d_prime,
+        M=M,
+        dp_alpha=dp_alpha
     )
 
 # Create plots directory if it doesn't exist

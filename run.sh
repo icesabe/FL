@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Create necessary directories
+echo "Creating necessary directories..."
+mkdir -p saved_exp_info/acc
+mkdir -p saved_exp_info/loss
+mkdir -p saved_exp_info/final_model
+mkdir -p saved_exp_info/len_dbs
+mkdir -p dataset/data_partition_result
+mkdir -p dataset/stratify_result
+mkdir -p plots
+
 # Section 1: Training Experiments
 echo "Running training experiments..."
 
@@ -160,3 +170,72 @@ done
 # - dirichlet_distribution_alpha_{alpha}.pdf
 # - stratification_results_alpha_{alpha}.pdf
 # - algorithm_comparison_alpha_{alpha}_q_{q}.pdf
+
+# First run the three training commands
+echo "Running training for compressed gradients..."
+python main_mnist.py --dataset=MNIST \
+    --partition=dir_0.01 \
+    --sampling=comp_grads \
+    --sample_ratio=0.1 \
+    --lr=0.01 \
+    --batch_size=128 \
+    --n_SGD=3 \
+    --n_iter=99 \
+    --strata_num=10 \
+    --decay=1.0 \
+    --mu=0.0 \
+    --seed=0 \
+    --force=True \
+    --K_desired=2048 \
+    --d_prime=9
+
+echo "Running training for DP + compressed gradients..."
+python main_mnist.py --dataset=MNIST \
+    --partition=dir_0.01 \
+    --sampling=dp_comp_grads \
+    --sample_ratio=0.1 \
+    --lr=0.01 \
+    --batch_size=128 \
+    --n_SGD=3 \
+    --n_iter=99 \
+    --strata_num=10 \
+    --decay=1.0 \
+    --mu=0.0 \
+    --seed=0 \
+    --force=True \
+    --alpha=0.1616 \
+    --M=100 \
+    --K_desired=2048 \
+    --d_prime=9
+
+echo "Running training for stratified sampling..."
+python main_mnist.py --dataset=MNIST \
+    --partition=dir_0.01 \
+    --sampling=ours \
+    --sample_ratio=0.1 \
+    --lr=0.01 \
+    --batch_size=128 \
+    --n_SGD=3 \
+    --n_iter=99 \
+    --strata_num=10 \
+    --decay=1.0 \
+    --mu=0.0 \
+    --seed=0 \
+    --force=True \
+    --K_desired=2048 \
+    --d_prime=9
+
+# Then generate all plots
+echo "Generating all plots..."
+python main_plots.py --plot_type all \
+    --dataset=MNIST \
+    --alpha=0.01 \
+    --q=0.1 \
+    --n_SGD=3 \
+    --batch_size=128 \
+    --n_iter=99 \
+    --mu=0.0 \
+    --K_desired=2048 \
+    --d_prime=9 \
+    --M=100 \
+    --dp_alpha=0.1616
