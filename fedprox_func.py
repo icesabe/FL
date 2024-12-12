@@ -29,7 +29,7 @@ def loss_classifier(predictions, labels):
     criterion = nn.CrossEntropyLoss()
     return criterion(predictions, labels)
 
-def client_compress_gradient(client_model, train_data, args):
+def client_compress_gradient(client_model, train_data, d_prime):
     """
     Compute and compress gradients for a client
     """
@@ -72,7 +72,7 @@ def client_compress_gradient(client_model, train_data, args):
     
     # Compress using k-means
     grad_np = flat_grad.cpu().detach().numpy()
-    kmeans = KMeans(n_clusters=args.d_prime, random_state=0)
+    kmeans = KMeans(n_clusters=d_prime, random_state=0)
     indices = kmeans.fit_predict(grad_np.reshape(-1, 1))
     centers = kmeans.cluster_centers_.flatten()
     
