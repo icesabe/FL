@@ -125,10 +125,10 @@ for q in 0.1 0.2 0.3 0.5; do
         --mu=0.0 \
         --smooth=True
 done
-
-# Or generate all plots at once for a specific configuration
-# python main_plots.py --plot_type=all --alpha=0.001 --q=0.1
-
+######################################################################################
+# Or generate all plots at once for a specific combination of parameters
+# python main_plots.py --plot_type=all --alpha=0.001 --q=0.1 --dataset=MNIST
+######################################################################################
 # Usage instructions:
 # 1. Make the script executable:
 #    chmod +x run.sh
