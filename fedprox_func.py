@@ -776,11 +776,11 @@ def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients):
             weights_.append(0)
     
     # Normalize weights
-    weights_sum = sum(weights_)
-    if weights_sum > 0:
-        weights_ = [w / weights_sum for w in weights_]
-    else:
-        weights_ = [1.0 / len(selected_clients)] * len(selected_clients)
+    #weights_sum = sum(weights_)
+    #if weights_sum > 0:
+    #    weights_ = [w / weights_sum for w in weights_]
+    #else:
+    #    weights_ = [1.0 / len(selected_clients)] * len(selected_clients)
     
     return weights_
 
@@ -941,10 +941,17 @@ def FedProx_stratified_sampling_compressed_gradients(
         #for layer_weigths in new_model.parameters():
         #   layer_weigths.data.sub_(layer_weigths.data)
         weights_ = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
-        assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
+        weights_sum = sum(weights_)
+        print(f"Sum of weights: {weights_sum}")  # Should be close to 1/N * sum over all strata
+
+        #add an assertion (with some tolerance)
+        assert abs(weights_sum - (1.0 / N)) < 1e-6, "Weights do not sum to 1/N as expected."
+        #assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
         # Aggregate model updates
+        #for layer_weights in new_model.parameters():
+        #    layer_weights.data.sub_(sum(weights_) * layer_weights.data)
         for layer_weights in new_model.parameters():
-            layer_weights.data.sub_(sum(weights_) * layer_weights.data)
+            layer_weights.data.sub_(layer_weights.data)
 
         for k, client_hist in enumerate(clients_params):
             for idx, layer_weights in enumerate(new_model.parameters()):
@@ -1130,10 +1137,17 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         #weights_sum = sum(weights_)
         #weights_ = [w/weights_sum for w in weights_]
         weights_ = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
-        assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
+        #assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
+        weights_sum = sum(weights_)
+        print(f"Sum of weights: {weights_sum}")  # Should be close to 1/N * sum over all strata
+
+        #add an assertion (with some tolerance)
+        assert abs(weights_sum - (1.0 / N)) < 1e-6, "Weights do not sum to 1/N as expected."
         # Aggregate model updates
         for layer_weights in new_model.parameters():
-            layer_weights.data.sub_(sum(weights_) * layer_weights.data)
+            layer_weights.data.sub_(layer_weights.data)
+        #for layer_weights in new_model.parameters():
+        #    layer_weights.data.sub_(sum(weights_) * layer_weights.data)
 
         for k, client_hist in enumerate(clients_params):
             for idx, layer_weights in enumerate(new_model.parameters()):
