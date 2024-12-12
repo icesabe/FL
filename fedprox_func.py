@@ -815,9 +815,12 @@ def FedProx_stratified_sampling_compressed_gradients(
         for k in selected:
             local_model = deepcopy(model)
             local_optimizer = optim.SGD(local_model.parameters(), lr=lr)
+            
             # Calculate sampling probability based on actual dataset size
             total_samples = len(training_sets[k].dataset)
-            sampling_prob = K_desired / total_samples
+            # Ensure sampling probability is valid (between 0 and 1)
+            sampling_prob = min(1.0, max(0.0, float(K_desired) / float(total_samples)))
+            print(f"Client {k} - Total samples: {total_samples}, K_desired: {K_desired}, Sampling prob: {sampling_prob}")
             
             # Sample data points
             sampled_features = []
@@ -860,14 +863,17 @@ def FedProx_stratified_sampling_compressed_gradients(
             sampled_clients_for_grad.append(k)
             sampled_clients_hist[i, k] = 1
 
+        if not clients_params:  # Skip aggregation if no clients had samples
+            print("Warning: No clients had valid samples in this round")
+            continue
+
         # Create the new global model by aggregating client updates
         new_model = deepcopy(model)
         #uniform weights
-        weights_ = [1/n_sampled]*n_sampled
+        #weights_ = [1/len(clients_params)]*len(clients_params)
         # Use data-size proportional weights for each selected client
-        #weights_ = [weights[client] for client in selected]
-        #weights_sum = sum(weights_)
-        #weights_ = [w/weights_sum for w in weights_]
+        weights_ = [weights[client] for client in selected]
+        
     
 
         for layer_weights in new_model.parameters():
