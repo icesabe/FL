@@ -13,7 +13,6 @@ The code above needs to be double checked. More changes still need to be made so
 If time permits: <br />
 1. Add exception checks to check for division by zero. <br />
 2. Reorganize code (put some functions in fedprox_func.py to utils.py). <br />
-3. Use recovered or restored gradients instead of compressed gradients in finding m_h and (p_t)^k.
 
 
 <br />
