@@ -11,8 +11,8 @@ from fedprox_func import *
 parser = argparse.ArgumentParser(description='FedProx on CIFAR10')
 
 parser.add_argument('--dataset', type=str, default='CIFAR10', help="The dataset used.")
-parser.add_argument('--partition', type=str, default='dir_0.001', help="The data partition method used. partition ∈ { dir_{alpha}, shard }")
-parser.add_argument('--sampling', type=str, help="The sampling scheme used. sampling ∈ { random, importance, ours, dp}")
+parser.add_argument('--partition', type=str, default='dir_0.001', help="The data partition method used. partition ∈ { iid, dir_{alpha}, shard }")
+parser.add_argument('--sampling', type=str, help="The sampling scheme used. sampling ∈ { random, importance, ours, dp, comp_grads, dp_comp_grads}")
 parser.add_argument("--sample_ratio", type=float, default=0.1, help="The percentage of clients sampled sample_ratio. We consider 100 clients in all our datasets and use thus sample_ratio=0.1.")
 parser.add_argument("--lr", type=float, default=0.05, help="The learning rate lr used.")
 parser.add_argument("--batch_size", type=int, default=50, help="The batch size used.")
@@ -23,6 +23,10 @@ parser.add_argument("--decay", type=float, default=1.0, help="The learning rate 
 parser.add_argument("--mu", type=float, default=0.0, help="The local loss function regularization parameter mu. FedProx with µ = 0 and without systems heterogeneity (no stragglers) corresponds to FedAvg.")
 parser.add_argument("--seed", type=int, default=0, help="The seed used to initialize the training model. We use 0 in all our experiments.")
 parser.add_argument("--force", type=bool, default=False, help="Force a boolean equal to True when a simulation has already been run but needs to be rerun.")
+parser.add_argument("--alpha", type=float, default=0.5, help="The privacy parameter alpha for DP sampling.")
+parser.add_argument("--M", type=int, default=300, help="The maximum response value for the Estimator.")
+parser.add_argument("--K_desired", type=int, default=2048, help="The desired sample size.")
+parser.add_argument("--d_prime", type=int, default=2, help="The compression parameter for gradient compression.")
 
 args = parser.parse_args()
 
@@ -49,7 +53,7 @@ stratify_result = stratify_clients(args)
 
 """NUMBER OF SAMPLED CLIENTS"""
 n_sampled = int(args.sample_ratio * len(list_dls_train))
-print("number fo sampled clients", n_sampled)
+print("number of sampled clients", n_sampled)
 
 
 """LOAD THE INTIAL GLOBAL MODEL"""
