@@ -88,7 +88,7 @@ def plot_stratification_results(alpha, n_strata=10, n_clients=100):
     plt.savefig(f'plots/stratification_results_alpha_{alpha}.pdf')
     plt.close()
 
-def plot_training_metrics(methods, labels, n_SGD, q, mu, alpha, smooth=True):
+def plot_training_metrics(methods, labels, n_SGD, q, mu, alpha, smooth=True, dataset="CIFAR10"):
     """Plot training metrics (accuracy and loss) for multiple methods with specific sampling ratio"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
     
@@ -96,7 +96,7 @@ def plot_training_metrics(methods, labels, n_SGD, q, mu, alpha, smooth=True):
     
     # Plot accuracy
     for method, label, color in zip(methods, labels, colors):
-        file_name = f"CIFAR10_dir_{alpha}_{method}_p{q}_lr0.05_b50_n{n_SGD}_i800_s10_d1.0_m{mu}_s0"
+        file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b200_n{n_SGD}_i100_s10_d1.0_m{mu}_s0"
         
         if os.path.exists(f"saved_exp_info/acc/{file_name}.pkl"):
             history = load_pkl('acc', file_name)
@@ -113,7 +113,7 @@ def plot_training_metrics(methods, labels, n_SGD, q, mu, alpha, smooth=True):
     
     # Plot loss
     for method, label, color in zip(methods, labels, colors):
-        file_name = f"CIFAR10_dir_{alpha}_{method}_p{q}_lr0.05_b50_n{n_SGD}_i800_s10_d1.0_m{mu}_s0"
+        file_name = f"{dataset}_dir_{alpha}_{method}_p{q}_lr0.01_b200_n{n_SGD}_i100_s10_d1.0_m{mu}_s0"
         
         if os.path.exists(f"saved_exp_info/loss/{file_name}.pkl"):
             history = load_pkl('loss', file_name)
@@ -132,7 +132,7 @@ def plot_training_metrics(methods, labels, n_SGD, q, mu, alpha, smooth=True):
     plt.savefig(f'plots/algorithm_comparison_alpha_{alpha}_q_{q}.pdf')
     plt.close()
 
-def plot_algorithm_comparison(metric, n_SGD, q, mu, alpha, smooth=True):
+def plot_algorithm_comparison(metric, n_SGD, q, mu, alpha, smooth=True, dataset="CIFAR10"):
     """Plot comparison of the three algorithms with specific alpha and sampling ratio"""
     methods = ['ours', 'comp_grads', 'dp_comp_grads']
     labels = ['Stratified', 'Compressed Gradients', 'DP + Compressed']
@@ -144,7 +144,8 @@ def plot_algorithm_comparison(metric, n_SGD, q, mu, alpha, smooth=True):
         q=q,
         mu=mu,
         alpha=alpha,
-        smooth=smooth
+        smooth=smooth,
+        dataset=dataset
     )
 
 # Create plots directory if it doesn't exist

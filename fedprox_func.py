@@ -872,8 +872,8 @@ def FedProx_stratified_sampling_compressed_gradients(
         #uniform weights
         #weights_ = [1/len(clients_params)]*len(clients_params)
         # Use data-size proportional weights for each selected client
-        weights_ = [weights[client] for client in selected]
-        
+        #weights_ = [weights[client] for client in selected]
+        weights_ = [1/n_sampled]*n_sampled
     
 
         for layer_weights in new_model.parameters():
