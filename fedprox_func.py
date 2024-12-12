@@ -78,9 +78,16 @@ def client_compress_gradient(client_model, train_data, args):
     
     return centers, indices
 
-def collect_compressed_gradients(model, training_sets, args):
+def collect_compressed_gradients(model, training_sets, d_prime):
     """
     Collect compressed gradients from all clients
+    Args:
+        model: global model
+        training_sets: list of training datasets
+        d_prime: compression parameter
+    Returns:
+        all_compressed_grads: compressed gradients from all clients
+        all_indices: indices for each client's compressed gradients
     """
     all_compressed_grads = []
     all_indices = []
@@ -88,7 +95,7 @@ def collect_compressed_gradients(model, training_sets, args):
     for client_id, train_data in enumerate(training_sets):
         # Each client computes and compresses their gradient
         local_model = deepcopy(model)
-        compressed_grad, indices = client_compress_gradient(local_model, train_data, args.d_prime)
+        compressed_grad, indices = client_compress_gradient(local_model, train_data, d_prime)
         
         # Server collects compressed gradients
         all_compressed_grads.append(compressed_grad)
@@ -563,6 +570,7 @@ def FedProx_stratified_dp_sampling(
     alpha: float,  # Privacy parameter from FedSampling
     M: int,        # Maximum response value for the Estimator
     K_desired: int, # Desired sample size
+    d_prime: int,   
 ):  
     # Initialize Estimator for privacy-preserving sampling
     train_users = {k: range(len(dl.dataset)) for k, dl in enumerate(training_sets)}
@@ -740,7 +748,7 @@ def FedProx_stratified_sampling_compressed_gradients(
     print("Clients' weights:", weights)
 
     # 1. Get compressed gradients from all clients
-    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime=args.d_prime)
+    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime)
 
     # 2. Stratify clients based on compressed gradients
     stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
@@ -911,7 +919,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     alpha: float,  # Privacy parameter from FedSampling
     M: int,        # Maximum response value for the Estimator
     K_desired: int, # Desired sample size
-    d_prime: int, # Desired sample size
+    d_prime: int,  # Compression parameter
 ):  
     # Initialize Estimator for privacy-preserving sampling
     train_users = {k: range(len(dl.dataset)) for k, dl in enumerate(training_sets)}
@@ -922,9 +930,8 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     weights = n_samples / np.sum(n_samples)
     print("Clients' weights:", weights)
 
-    # 1. each client sends compressed gradients **************************************
-    # Get compressed gradients from all clients
-    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime=args.d_prime)
+    # 1. Get compressed gradients from all clients
+    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime)
 
     # 2. Stratify clients based on compressed gradients ******************************
     # Use compressed gradients for stratification
