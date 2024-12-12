@@ -741,6 +741,50 @@ def FedProx_stratified_dp_sampling(
 
     return model, loss_hist, acc_hist
 
+def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients):
+    """
+    Calculate aggregation weights according to the formula:
+    w_{t+1} = \frac{1}{N} \sum_{h=1}^{H} N_h \frac{1}{m_h} \sum_{k=1}^{m_h} \frac{1}{p_t^k} w_{t+1}^k
+    """
+    N_h = [len(cls) for cls in stratify_result]  # Size of each stratum
+    N = sum(N_h)  # Total number of clients
+    
+    # Count selected clients in each stratum
+    m_h = [0] * len(stratify_result)
+    for k in selected_clients:
+        for h, cls in enumerate(stratify_result):
+            if k in cls:
+                m_h[h] += 1
+                break
+    
+    # Calculate weights for each selected client
+    weights_ = []
+    client_to_stratum = {}
+    
+    # Create mapping of client to stratum
+    for h, cls in enumerate(stratify_result):
+        for k in cls:
+            client_to_stratum[k] = h
+            
+    # Calculate weight for each selected client
+    for k in selected_clients:
+        h = client_to_stratum[k]
+        if m_h[h] > 0:  # Avoid division by zero
+            weight = (N_h[h] / (N * m_h[h])) * (1 / chosen_p[h][k])
+            weights_.append(weight)
+        else:
+            weights_.append(0)
+    
+    # Normalize weights
+    weights_sum = sum(weights_)
+    if weights_sum > 0:
+        weights_ = [w / weights_sum for w in weights_]
+    else:
+        weights_ = [1.0 / len(selected_clients)] * len(selected_clients)
+    
+    return weights_
+
+
 def FedProx_stratified_sampling_compressed_gradients(
     args,
     model,
@@ -893,19 +937,27 @@ def FedProx_stratified_sampling_compressed_gradients(
         # Use data-size proportional weights for each selected client
         #weights_ = [weights[client] for client in selected]
         #weights_ = [1/n_sampled]*n_sampled
-        weights_ = [1 / n_sampled] * n_sampled
-        for layer_weigths in new_model.parameters():
-            layer_weigths.data.sub_(layer_weigths.data)
-
-    
-
-        #for layer_weights in new_model.parameters():
-        #    layer_weights.data.sub_(sum(weights_) * layer_weights.data)
+        #weights_ = [1 / n_sampled] * n_sampled
+        #for layer_weigths in new_model.parameters():
+        #   layer_weigths.data.sub_(layer_weigths.data)
+        weights_ = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
+        assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
+        # Aggregate model updates
+        for layer_weights in new_model.parameters():
+            layer_weights.data.sub_(sum(weights_) * layer_weights.data)
 
         for k, client_hist in enumerate(clients_params):
             for idx, layer_weights in enumerate(new_model.parameters()):
                 contribution = client_hist[idx].data * weights_[k]
                 layer_weights.data.add_(contribution)
+       
+        #for layer_weights in new_model.parameters():
+        #    layer_weights.data.sub_(sum(weights_) * layer_weights.data)
+
+        #for k, client_hist in enumerate(clients_params):
+        #    for idx, layer_weights in enumerate(new_model.parameters()):
+        #        contribution = client_hist[idx].data * weights_[k]
+        #        layer_weights.data.add_(contribution)
 
         model = new_model
 
@@ -1077,18 +1129,28 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         #weights_ = [weights[client] for client in selected]
         #weights_sum = sum(weights_)
         #weights_ = [w/weights_sum for w in weights_]
-        weights_ = [1 / n_sampled] * n_sampled
-        for layer_weigths in new_model.parameters():
-            layer_weigths.data.sub_(layer_weigths.data)
-
-
-        #for layer_weights in new_model.parameters():
-        #    layer_weights.data.sub_(sum(weights_) * layer_weights.data)
+        weights_ = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
+        assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
+        # Aggregate model updates
+        for layer_weights in new_model.parameters():
+            layer_weights.data.sub_(sum(weights_) * layer_weights.data)
 
         for k, client_hist in enumerate(clients_params):
             for idx, layer_weights in enumerate(new_model.parameters()):
                 contribution = client_hist[idx].data * weights_[k]
                 layer_weights.data.add_(contribution)
+        #weights_ = [1 / n_sampled] * n_sampled
+        #for layer_weigths in new_model.parameters():
+        #   layer_weigths.data.sub_(layer_weigths.data)
+
+
+        #for layer_weights in new_model.parameters():
+        #    layer_weights.data.sub_(sum(weights_) * layer_weights.data)
+
+        #for k, client_hist in enumerate(clients_params):
+        #    for idx, layer_weights in enumerate(new_model.parameters()):
+        #        contribution = client_hist[idx].data * weights_[k]
+        #        layer_weights.data.add_(contribution)
 
         model = new_model
 
