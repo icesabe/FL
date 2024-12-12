@@ -782,7 +782,7 @@ def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients):
     #else:
     #    weights_ = [1.0 / len(selected_clients)] * len(selected_clients)
     
-    return weights_
+    return weights_, N
 
 
 def FedProx_stratified_sampling_compressed_gradients(
@@ -940,7 +940,7 @@ def FedProx_stratified_sampling_compressed_gradients(
         #weights_ = [1 / n_sampled] * n_sampled
         #for layer_weigths in new_model.parameters():
         #   layer_weigths.data.sub_(layer_weigths.data)
-        weights_ = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
+        weights_, N = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
         weights_sum = sum(weights_)
         print(f"Sum of weights: {weights_sum}")  # Should be close to 1/N * sum over all strata
 
@@ -1136,7 +1136,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         #weights_ = [weights[client] for client in selected]
         #weights_sum = sum(weights_)
         #weights_ = [w/weights_sum for w in weights_]
-        weights_ = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
+        weights_, N = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
         #assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
         weights_sum = sum(weights_)
         print(f"Sum of weights: {weights_sum}")  # Should be close to 1/N * sum over all strata
