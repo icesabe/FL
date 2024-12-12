@@ -1131,15 +1131,15 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         # Create the new global model by aggregating client updates
         new_model = deepcopy(model)
         #uniform weights
-        #weights_ = [1/n_sampled]*n_sampled
+        weights_ = [1/n_sampled]*n_sampled
         # Use data-size proportional weights for each selected client
         #weights_ = [weights[client] for client in selected]
         #weights_sum = sum(weights_)
         #weights_ = [w/weights_sum for w in weights_]
-        weights_, N = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
+        #weights_, N = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
         #assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
-        weights_sum = sum(weights_)
-        print(f"Sum of weights: {weights_sum}")  # Should be close to 1/N * sum over all strata
+        #weights_sum = sum(weights_)
+        #print(f"Sum of weights: {weights_sum}")  # Should be close to 1/N * sum over all strata
 
         #add an assertion (with some tolerance)
         #assert abs(weights_sum - (1.0 / N)) < 1e-6, "Weights do not sum to 1/N as expected."
