@@ -741,49 +741,75 @@ def FedProx_stratified_dp_sampling(
 
     return model, loss_hist, acc_hist
 
-def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients):
+def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients, n_sampled, weights=None, weighting_scheme='proposed'):
     """
-    Calculate aggregation weights according to the formula:
-    w_{t+1} = \frac{1}{N} \sum_{h=1}^{H} N_h \frac{1}{m_h} \sum_{k=1}^{m_h} \frac{1}{p_t^k} w_{t+1}^k
+    Calculate aggregation weights with different schemes and stability measures.
+    weighting_scheme: 'uniform', 'size_prop', or 'proposed'
+    n_sampled: number of clients to be sampled (based on q ratio)
     """
-    N_h = [len(cls) for cls in stratify_result]  # Size of each stratum
-    N = sum(N_h)  # Total number of clients
+    if weighting_scheme == 'uniform':
+        # Simple uniform weighting based on n_sampled
+        return [1.0 / n_sampled] * n_sampled
     
-    # Count selected clients in each stratum
-    m_h = [0] * len(stratify_result)
-    for k in selected_clients:
+    elif weighting_scheme == 'size_prop':
+        # Data-size proportional weighting
+        if weights is None:
+            return [1.0 / n_sampled] * n_sampled
+        weights_ = [weights[client] for client in selected_clients]
+        weights_sum = sum(weights_)
+        return [w / weights_sum for w in weights_]
+    
+    else:  # proposed scheme with stability measures
+        N_h = [len(cls) for cls in stratify_result]  # Size of each stratum
+        N = sum(N_h)  # Total number of clients
+        
+        # Count selected clients in each stratum
+        m_h = [0] * len(stratify_result)
+        for k in selected_clients:
+            for h, cls in enumerate(stratify_result):
+                if k in cls:
+                    m_h[h] += 1
+                    break
+        
+        # Create mapping of client to stratum
+        client_to_stratum = {}
         for h, cls in enumerate(stratify_result):
-            if k in cls:
-                m_h[h] += 1
-                break
-    
-    # Calculate weights for each selected client
-    weights_ = []
-    client_to_stratum = {}
-    
-    # Create mapping of client to stratum
-    for h, cls in enumerate(stratify_result):
-        for k in cls:
-            client_to_stratum[k] = h
-            
-    # Calculate weight for each selected client
-    for k in selected_clients:
-        h = client_to_stratum[k]
-        if m_h[h] > 0:  # Avoid division by zero
-            weight = (N_h[h] / (N * m_h[h])) * (1 / chosen_p[h][k])
-            weights_.append(weight)
+            for k in cls:
+                client_to_stratum[k] = h
+        
+        # Validate probabilities
+        for h in range(len(stratify_result)):
+            stratum_sum_p = sum(chosen_p[h].values())
+            if stratum_sum_p < 0.01:  # Warning if probabilities seem too small
+                print(f"Warning: Sum of probabilities in stratum {h} is very small: {stratum_sum_p}")
+        
+        # Calculate weights with stability measures
+        weights_ = []
+        for k in selected_clients:
+            h = client_to_stratum[k]
+            if m_h[h] > 0:  # Avoid division by zero
+                # Add small epsilon to avoid division by very small numbers
+                epsilon = 1e-8
+                p_tk = max(chosen_p[h][k], epsilon)
+                
+                # Calculate weight according to the formula
+                stratum_weight = N_h[h] / N  # Proportion of clients in stratum h
+                weight = stratum_weight * (1 / (m_h[h] * p_tk))  # Weight formula from the paper
+                max_weight = 20.0  # Maximum allowed weight 
+                weight = min(weight, max_weight)
+                weights_.append(weight)
+            else:
+                weights_.append(0)
+        
+        # Normalize weights to sum to 1
+        weights_sum = sum(weights_)
+        if weights_sum > 0:
+            weights_ = [w / weights_sum for w in weights_]
         else:
-            weights_.append(0)
-    
-    # Normalize weights
-    #weights_sum = sum(weights_)
-    #if weights_sum > 0:
-    #    weights_ = [w / weights_sum for w in weights_]
-    #else:
-    #    weights_ = [1.0 / len(selected_clients)] * len(selected_clients)
-    
-    return weights_, N
-
+            # Fallback to uniform weights if something goes wrong
+            weights_ = [1.0 / n_sampled] * n_sampled
+        
+        return weights_
 
 def FedProx_stratified_sampling_compressed_gradients(
     args,
@@ -804,6 +830,7 @@ def FedProx_stratified_sampling_compressed_gradients(
     Federated learning with stratified sampling using compressed gradients (non-DP version)
     """
     print("Running FedProx with stratified sampling using compressed gradients")
+    print(f"Number of sampled clients (n_sampled): {n_sampled}")
 
     K = len(training_sets)  # number of clients
     n_samples = np.array([len(db.dataset) for db in training_sets])
@@ -826,7 +853,6 @@ def FedProx_stratified_sampling_compressed_gradients(
         allocation_number = cal_allocation_number_NS(stratify_result, compressed_grads, SIZE_STRATA, args.sample_ratio)
     print("Allocation numbers:", allocation_number)
 
-    # Initialize history tracking
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
 
@@ -908,15 +934,15 @@ def FedProx_stratified_sampling_compressed_gradients(
                     shuffle=True
                 )
 
-            # Local training with FedProx
-            local_learning(
-                local_model,
-                mu,
-                local_optimizer,
-                sampled_loader,
-                n_SGD,
-                loss_classifier,
-            )
+                # Local training with FedProx
+                local_learning(
+                    local_model,
+                    mu,
+                    local_optimizer,
+                    sampled_loader,
+                    n_SGD,
+                    loss_classifier,
+                )
 
             # Append parameters for aggregation
             list_params = list(local_model.parameters())
@@ -932,24 +958,20 @@ def FedProx_stratified_sampling_compressed_gradients(
 
         # Create the new global model by aggregating client updates
         new_model = deepcopy(model)
-        #uniform weights
-        #weights_ = [1/len(clients_params)]*len(clients_params)
-        # Use data-size proportional weights for each selected client
-        #weights_ = [weights[client] for client in selected]
-        #weights_ = [1/n_sampled]*n_sampled
-        #weights_ = [1 / n_sampled] * n_sampled
-        #for layer_weigths in new_model.parameters():
-        #   layer_weigths.data.sub_(layer_weigths.data)
-        weights_, N = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
-        weights_sum = sum(weights_)
-        print(f"Sum of weights: {weights_sum}")  # Should be close to 1/N * sum over all strata
+        
+        # Calculate weights using the new function with stability measures
+        weights_ = calculate_aggregation_weights(
+            stratify_result, 
+            chosen_p, 
+            sampled_clients_for_grad,
+            n_sampled,  # Pass n_sampled to ensure proper scaling
+            weights=weights,  # Pass the data-size weights
+            weighting_scheme='proposed'  # Try 'uniform', 'size_prop', or 'proposed'
+        )
 
-        #add an assertion (with some tolerance)
-        #assert abs(weights_sum - (1.0 / N)) < 1e-6, "Weights do not sum to 1/N as expected."
-        #assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
+        print(f"Round {i+1} - Sum of weights: {sum(weights_):.6f} (should be close to {1.0/n_sampled:.6f})")
+
         # Aggregate model updates
-        #for layer_weights in new_model.parameters():
-        #    layer_weights.data.sub_(sum(weights_) * layer_weights.data)
         for layer_weights in new_model.parameters():
             layer_weights.data.sub_(layer_weights.data)
 
@@ -957,14 +979,6 @@ def FedProx_stratified_sampling_compressed_gradients(
             for idx, layer_weights in enumerate(new_model.parameters()):
                 contribution = client_hist[idx].data * weights_[k]
                 layer_weights.data.add_(contribution)
-       
-        #for layer_weights in new_model.parameters():
-        #    layer_weights.data.sub_(sum(weights_) * layer_weights.data)
-
-        #for k, client_hist in enumerate(clients_params):
-        #    for idx, layer_weights in enumerate(new_model.parameters()):
-        #        contribution = client_hist[idx].data * weights_[k]
-        #        layer_weights.data.add_(contribution)
 
         model = new_model
 
@@ -1131,12 +1145,12 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         # Create the new global model by aggregating client updates
         new_model = deepcopy(model)
         #uniform weights
-        weights_ = [1/n_sampled]*n_sampled
+        #weights_ = [1/n_sampled]*n_sampled
         # Use data-size proportional weights for each selected client
         #weights_ = [weights[client] for client in selected]
         #weights_sum = sum(weights_)
         #weights_ = [w/weights_sum for w in weights_]
-        #weights_, N = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
+        weights_, N = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
         #assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
         #weights_sum = sum(weights_)
         #print(f"Sum of weights: {weights_sum}")  # Should be close to 1/N * sum over all strata
@@ -1192,8 +1206,6 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     )
 
     return model, loss_hist, acc_hist
-
-
 
 def run(args, model_mnist, n_sampled, list_dls_train, list_dls_test, file_name):
     """RUN FEDAVG WITH RANDOM SAMPLING"""
