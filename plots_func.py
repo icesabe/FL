@@ -140,27 +140,88 @@ def plot_training_metrics(methods, labels, n_SGD, batch_size, n_iter, q, mu, alp
     plt.savefig(f'plots/{dataset}_algorithm_comparison_alpha_{alpha}_q_{q}.pdf')
     plt.close()
 
-def plot_algorithm_comparison(metric, n_SGD, batch_size, n_iter, q, mu, alpha, smooth=True, dataset="CIFAR10", K_desired=2048, d_prime=9, M=100, dp_alpha=0.1616):
-    """Plot comparison of the three algorithms with specific alpha and sampling ratio"""
-    methods = ['ours', 'comp_grads', 'dp_comp_grads']
-    labels = ['Stratified', 'Compressed Gradients', 'DP + Compressed']
+def plot_algorithm_comparison(results, alpha, q, dataset='MNIST'):
+    """Plot algorithm comparison for given alpha and q values."""
+    plt.figure(figsize=(15, 5))
     
-    plot_training_metrics(
-        methods=methods,
-        labels=labels,
-        n_SGD=n_SGD,
-        batch_size=batch_size,
-        n_iter=n_iter,
-        q=q,
-        mu=mu,
-        alpha=alpha,
-        smooth=smooth,
-        dataset=dataset,
-        K_desired=K_desired,
-        d_prime=d_prime,
-        M=M,
-        dp_alpha=dp_alpha
-    )
+    # Plot training loss
+    plt.subplot(1, 2, 1)
+    for method, data in results.items():
+        line, = plt.plot(data['train_loss'], '-', linewidth=2, label=method)
+    plt.title(f'Training Loss (α={alpha}, q={q})')
+    plt.xlabel('Round')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    plt.legend(loc='upper right')
+    
+    # Plot test accuracy
+    plt.subplot(1, 2, 2)
+    for method, data in results.items():
+        line, = plt.plot(data['test_acc'], '-', linewidth=2, label=method)
+    plt.title(f'Test Accuracy (α={alpha}, q={q})')
+    plt.xlabel('Round')
+    plt.ylabel('Accuracy (%)')
+    plt.grid(True)
+    plt.legend(loc='lower right')
+    
+    plt.tight_layout()
+    plt.savefig(f'plots/{dataset}_comparison_alpha{alpha}_q{q}.png', bbox_inches='tight')
+    plt.close()
+
+def plot_dirichlet_distribution(alpha, dataset_sizes, dataset='MNIST'):
+    """Plot Dirichlet distribution visualization."""
+    plt.figure(figsize=(10, 5))
+    
+    # Plot distribution
+    x = range(len(dataset_sizes))
+    bars = plt.bar(x, dataset_sizes, alpha=0.7, label='Client Data Distribution')
+    plt.title(f'Dirichlet Distribution (α={alpha})')
+    plt.xlabel('Client Index')
+    plt.ylabel('Dataset Size')
+    plt.grid(True)
+    plt.legend(loc='upper right')
+    
+    plt.tight_layout()
+    plt.savefig(f'plots/{dataset}_dirichlet_alpha{alpha}.png', bbox_inches='tight')
+    plt.close()
+
+def plot_stratification_results(strata_sizes, strata_assignments, alpha, dataset='MNIST'):
+    """Plot stratification results."""
+    plt.figure(figsize=(15, 5))
+    
+    # Plot stratum sizes
+    plt.subplot(1, 2, 1)
+    x = range(len(strata_sizes))
+    bars = plt.bar(x, strata_sizes, alpha=0.7, label='Stratum Size')
+    plt.title(f'Stratum Sizes (α={alpha})')
+    plt.xlabel('Stratum Index')
+    plt.ylabel('Number of Clients')
+    plt.grid(True)
+    plt.legend(loc='upper right')
+    
+    # Plot client assignments
+    plt.subplot(1, 2, 2)
+    unique_strata = len(set(strata_assignments))
+    colors = plt.cm.get_cmap('tab20')(np.linspace(0, 1, unique_strata))
+    
+    # Create scatter plots with labels
+    for stratum in range(unique_strata):
+        mask = np.array(strata_assignments) == stratum
+        if np.any(mask):
+            plt.scatter(np.where(mask)[0], [1]*np.sum(mask), 
+                       c=[colors[stratum]], 
+                       label=f'Stratum {stratum}',
+                       alpha=0.7, s=50)
+    
+    plt.title(f'Client Stratum Assignments (α={alpha})')
+    plt.xlabel('Client Index')
+    plt.yticks([])
+    plt.grid(True)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+    
+    plt.tight_layout()
+    plt.savefig(f'plots/{dataset}_stratification_alpha{alpha}.png', bbox_inches='tight')
+    plt.close()
 
 # Create plots directory if it doesn't exist
 if not os.path.exists('plots'):
