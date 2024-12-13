@@ -741,15 +741,16 @@ def FedProx_stratified_dp_sampling(
 
     return model, loss_hist, acc_hist
 
-def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients, n_sampled, weights=None, weighting_scheme='proposed'):
+def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients, n_sampled, weights=None, weighting_scheme='proposed', training_sets=None):
     """
     Calculate aggregation weights with different schemes and stability measures.
     weighting_scheme: 'uniform', 'size_prop', or 'proposed'
     n_sampled: number of clients to be sampled (based on q ratio)
+    training_sets: dictionary of client training datasets
     """
     if weighting_scheme == 'uniform':
         # Simple uniform weighting based on n_sampled
-        return [1.0 / n_sampled] * n_sampled
+        return [1.0 / n_sampled] * n_sampled, n_sampled
     
     elif weighting_scheme == 'size_prop':
         # Data-size proportional weighting
@@ -761,7 +762,7 @@ def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients, n
     
     else:  # proposed scheme with stability measures
         N_h = [len(cls) for cls in stratify_result]  # Size of each stratum
-        N = sum(N_h)  # Total number of clients
+        N = n_sampled  # Total number of clients
         
         # Count selected clients in each stratum
         m_h = [0] * len(stratify_result)
@@ -782,24 +783,42 @@ def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients, n
         weights_ = []
         for k in selected_clients:
             h = client_to_stratum[k]
-            if m_h[h] > 0:  # Avoid division by zero
+            if m_h[h] > 0 and training_sets is not None:  # Avoid division by zero
+                # Calculate p_tk and N for this client
+                total_samples = len(training_sets[k].dataset)  # N is total samples for this client
+                K_desired = 2048  # This should match your setup
+                p_tk = min(1.0, max(0.0, float(K_desired) / float(total_samples)))
+                
                 # Add small epsilon to avoid division by very small numbers
                 epsilon = 1e-8
-                p_tk = max(chosen_p[h][k], epsilon)
+                p_tk = max(p_tk, epsilon)
                 
                 # Calculate weight according to the formula
                 stratum_weight = N_h[h] / N  # Proportion of clients in stratum h
-                weight = stratum_weight * (1 / (m_h[h] * p_tk))  # Weight formula from the paper
-                max_weight = 20.0  # Maximum allowed weight 
+                weight = stratum_weight * (1.0 / (m_h[h] * p_tk))  # Include inverse probability weight
+                
+                # Add some bounds to prevent extreme weights
+                max_weight = 10.0 / p_tk  # Scale maximum weight by inverse probability
                 weight = min(weight, max_weight)
                 weights_.append(weight)
+                
+                # Print debug info
+                print(f"Client {k} - Stratum {h}, total_samples: {total_samples}, "
+                      f"p_tk: {p_tk:.4f}, stratum_weight: {stratum_weight:.4f}, "
+                      f"m_h: {m_h[h]}, raw_weight: {weight:.4f}")
             else:
                 weights_.append(0)
+        
+        # Print statistics for debugging
+        if len(weights_) > 0:
+            print(f"Weight stats before scaling - Min: {min(weights_):.4f}, Max: {max(weights_):.4f}, "
+                  f"Mean: {sum(weights_)/len(weights_):.4f}")
         
         # Normalize weights to sum to 1
         weights_sum = sum(weights_)
         if weights_sum > 0:
             weights_ = [w / weights_sum for w in weights_]
+            print(f"Final weight sum: {sum(weights_):.6f}")
         else:
             # Fallback to uniform weights if something goes wrong
             weights_ = [1.0 / n_sampled] * n_sampled
@@ -959,9 +978,9 @@ def FedProx_stratified_sampling_compressed_gradients(
             stratify_result, 
             chosen_p, 
             sampled_clients_for_grad,
-            n_sampled,  # Pass n_sampled to ensure proper scaling
-            weights=weights,  # Pass the data-size weights
-            weighting_scheme='proposed'  # Try 'uniform', 'size_prop', or 'proposed'
+            n_sampled=n_sampled, 
+            weighting_scheme='proposed',
+            training_sets=training_sets
         )
 
         print(f"Round {i+1} - Sum of weights: {sum(weights_):.6f} (should be close to {1.0/n_sampled:.6f})")
