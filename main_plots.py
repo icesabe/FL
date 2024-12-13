@@ -23,17 +23,24 @@ def load_results(args):
     
     for method_key, method_name in methods.items():
         acc_file = f"saved_exp_info/acc/MNIST_dir_{args.alpha}_{method_key}_p{args.q}_lr0.01_b{args.batch_size}_n{args.n_SGD}_i{args.n_iter}_s10_d1.0_m{args.mu}_s0.pkl"
-        if os.path.exists(acc_file):
-            with open(acc_file, 'rb') as f:
-                data = pickle.load(f)
-                # Assuming data contains 'train_loss' and 'test_acc'
-                results[method_name] = {
-                    'train_loss': data['train_loss'] if 'train_loss' in data else [],
-                    'test_acc': data['test_acc'] if 'test_acc' in data else []
-                }
-                print(f"Loaded results for {method_name}")
-        else:
-            print(f"File not found: {acc_file}")
+        
+        try:
+            if os.path.exists(acc_file):
+                with open(acc_file, 'rb') as f:
+                    data = pickle.load(f)
+                    if isinstance(data, dict):
+                        results[method_name] = {
+                            'train_loss': data.get('train_loss', []),
+                            'test_acc': data.get('test_acc', [])
+                        }
+                        print(f"Loaded results for {method_name}")
+                    else:
+                        print(f"Invalid data format for {method_name}")
+            else:
+                print(f"File not found: {acc_file}")
+        except Exception as e:
+            print(f"Error loading {method_name}: {str(e)}")
+            
     return results
 
 def load_partition_data(args):
