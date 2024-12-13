@@ -750,7 +750,7 @@ def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients, n
     """
     if weighting_scheme == 'uniform':
         # Simple uniform weighting based on n_sampled
-        return [1.0 / n_sampled] * n_sampled, n_sampled
+        return [1.0 / n_sampled] * n_sampled
     
     elif weighting_scheme == 'size_prop':
         # Data-size proportional weighting
@@ -1164,7 +1164,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         #weights_ = [weights[client] for client in selected]
         #weights_sum = sum(weights_)
         #weights_ = [w/weights_sum for w in weights_]
-        weights_, N = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
+        weights_ = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
         #assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
         #weights_sum = sum(weights_)
         #print(f"Sum of weights: {weights_sum}")  # Should be close to 1/N * sum over all strata
