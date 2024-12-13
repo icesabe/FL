@@ -147,7 +147,8 @@ def plot_algorithm_comparison(results, alpha, q, dataset='MNIST'):
     # Plot training loss
     plt.subplot(1, 2, 1)
     for method, data in results.items():
-        line, = plt.plot(data['train_loss'], '-', linewidth=2, label=method)
+        if 'train_loss' in data and len(data['train_loss']) > 0:
+            plt.plot(data['train_loss'], '-', linewidth=2, label=method)
     plt.title(f'Training Loss (α={alpha}, q={q})')
     plt.xlabel('Round')
     plt.ylabel('Loss')
@@ -157,7 +158,8 @@ def plot_algorithm_comparison(results, alpha, q, dataset='MNIST'):
     # Plot test accuracy
     plt.subplot(1, 2, 2)
     for method, data in results.items():
-        line, = plt.plot(data['test_acc'], '-', linewidth=2, label=method)
+        if 'test_acc' in data and len(data['test_acc']) > 0:
+            plt.plot(data['test_acc'], '-', linewidth=2, label=method)
     plt.title(f'Test Accuracy (α={alpha}, q={q})')
     plt.xlabel('Round')
     plt.ylabel('Accuracy (%)')
@@ -165,62 +167,83 @@ def plot_algorithm_comparison(results, alpha, q, dataset='MNIST'):
     plt.legend(loc='lower right')
     
     plt.tight_layout()
-    plt.savefig(f'plots/{dataset}_comparison_alpha{alpha}_q{q}.png', bbox_inches='tight')
+    plt.savefig(f'plots/{dataset}_comparison_alpha{alpha}_q{q}.png', bbox_inches='tight', dpi=300)
     plt.close()
 
 def plot_dirichlet_distribution(alpha, dataset_sizes, dataset='MNIST'):
     """Plot Dirichlet distribution visualization."""
-    plt.figure(figsize=(10, 5))
-    
-    # Plot distribution
+    if len(dataset_sizes) == 0:
+        print("Warning: No dataset sizes provided for Dirichlet distribution plot")
+        return
+        
+    plt.figure(figsize=(12, 6))
     x = range(len(dataset_sizes))
-    bars = plt.bar(x, dataset_sizes, alpha=0.7, label='Client Data Distribution')
+    plt.bar(x, dataset_sizes, alpha=0.7, label='Client Data Size')
     plt.title(f'Dirichlet Distribution (α={alpha})')
     plt.xlabel('Client Index')
     plt.ylabel('Dataset Size')
-    plt.grid(True)
-    plt.legend(loc='upper right')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    
+    # Add some statistics as text
+    stats_text = f'Mean: {np.mean(dataset_sizes):.1f}\nStd: {np.std(dataset_sizes):.1f}\nMin: {np.min(dataset_sizes):.1f}\nMax: {np.max(dataset_sizes):.1f}'
+    plt.text(0.95, 0.95, stats_text,
+             transform=plt.gca().transAxes,
+             verticalalignment='top',
+             horizontalalignment='right',
+             bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
     plt.tight_layout()
-    plt.savefig(f'plots/{dataset}_dirichlet_alpha{alpha}.png', bbox_inches='tight')
+    plt.savefig(f'plots/{dataset}_dirichlet_alpha{alpha}.png', bbox_inches='tight', dpi=300)
     plt.close()
 
 def plot_stratification_results(strata_sizes, strata_assignments, alpha, dataset='MNIST'):
     """Plot stratification results."""
+    if not strata_sizes or not strata_assignments:
+        print("Warning: No stratification data provided")
+        return
+        
     plt.figure(figsize=(15, 5))
     
     # Plot stratum sizes
     plt.subplot(1, 2, 1)
     x = range(len(strata_sizes))
-    bars = plt.bar(x, strata_sizes, alpha=0.7, label='Stratum Size')
+    plt.bar(x, strata_sizes, alpha=0.7, label='Stratum Size')
     plt.title(f'Stratum Sizes (α={alpha})')
     plt.xlabel('Stratum Index')
     plt.ylabel('Number of Clients')
-    plt.grid(True)
-    plt.legend(loc='upper right')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    
+    # Add size labels on top of bars
+    for i, v in enumerate(strata_sizes):
+        plt.text(i, v, str(v), ha='center', va='bottom')
     
     # Plot client assignments
     plt.subplot(1, 2, 2)
-    unique_strata = len(set(strata_assignments))
-    colors = plt.cm.get_cmap('tab20')(np.linspace(0, 1, unique_strata))
+    unique_strata = sorted(set(strata_assignments))
+    colors = plt.cm.get_cmap('tab20')(np.linspace(0, 1, len(unique_strata)))
     
     # Create scatter plots with labels
-    for stratum in range(unique_strata):
+    for i, stratum in enumerate(unique_strata):
         mask = np.array(strata_assignments) == stratum
         if np.any(mask):
             plt.scatter(np.where(mask)[0], [1]*np.sum(mask), 
-                       c=[colors[stratum]], 
+                       c=[colors[i]], 
                        label=f'Stratum {stratum}',
                        alpha=0.7, s=50)
     
     plt.title(f'Client Stratum Assignments (α={alpha})')
     plt.xlabel('Client Index')
     plt.yticks([])
-    plt.grid(True)
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+    plt.grid(True, alpha=0.3)
+    
+    # Adjust legend position and size
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', 
+              borderaxespad=0., ncol=2 if len(unique_strata) > 10 else 1)
     
     plt.tight_layout()
-    plt.savefig(f'plots/{dataset}_stratification_alpha{alpha}.png', bbox_inches='tight')
+    plt.savefig(f'plots/{dataset}_stratification_alpha{alpha}.png', bbox_inches='tight', dpi=300)
     plt.close()
 
 # Create plots directory if it doesn't exist

@@ -42,26 +42,47 @@ def load_partition_data(args):
     if os.path.exists(partition_file):
         with open(partition_file, 'rb') as f:
             data = pickle.load(f)
-            # Extract dataset sizes and stratification info from partition data
+            print(f"Loaded partition data: {type(data)}")
+            
+            # Initialize lists
             dataset_sizes = []
             strata_assignments = []
-            strata_sizes = []
             
-            # Process the partition data based on its structure
-            # You might need to adjust this based on your actual data structure
+            # Handle different possible data structures
             if isinstance(data, dict):
-                for client_id, client_data in data.items():
-                    if 'n_samples' in client_data:
-                        dataset_sizes.append(client_data['n_samples'])
-                    if 'stratum' in client_data:
-                        strata_assignments.append(client_data['stratum'])
+                print(f"Number of clients in partition data: {len(data)}")
+                # If data is a dictionary of client data
+                for client_id in sorted(data.keys()):
+                    client_data = data[client_id]
+                    if isinstance(client_data, dict):
+                        # If client data is a dictionary with metadata
+                        if 'n_train_samples' in client_data:
+                            dataset_sizes.append(client_data['n_train_samples'])
+                        elif 'samples' in client_data:
+                            dataset_sizes.append(len(client_data['samples']))
+                        
+                        if 'stratum' in client_data:
+                            strata_assignments.append(client_data['stratum'])
+                    elif isinstance(client_data, (list, np.ndarray)):
+                        # If client data is directly the samples
+                        dataset_sizes.append(len(client_data))
             
+            # Calculate strata sizes from assignments
             if strata_assignments:
                 unique_strata = sorted(set(strata_assignments))
                 strata_sizes = [strata_assignments.count(s) for s in unique_strata]
+            else:
+                strata_sizes = []
+            
+            print(f"Dataset sizes: min={min(dataset_sizes) if dataset_sizes else 'N/A'}, "
+                  f"max={max(dataset_sizes) if dataset_sizes else 'N/A'}")
+            print(f"Number of strata: {len(strata_sizes)}")
+            print(f"Strata sizes: {strata_sizes}")
             
             return np.array(dataset_sizes), strata_sizes, strata_assignments
-    return np.random.dirichlet([args.alpha] * 100) * 1000, [25] * 4, np.random.randint(0, 4, 100)
+    else:
+        print(f"Partition file not found: {partition_file}")
+        return np.array([]), [], []
 
 def main():
     parser = argparse.ArgumentParser()
