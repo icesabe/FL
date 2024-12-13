@@ -777,11 +777,6 @@ def calculate_aggregation_weights(stratify_result, chosen_p, selected_clients, n
             for k in cls:
                 client_to_stratum[k] = h
         
-        # Validate probabilities
-        for h in range(len(stratify_result)):
-            stratum_sum_p = sum(chosen_p[h].values())
-            if stratum_sum_p < 0.01:  # Warning if probabilities seem too small
-                print(f"Warning: Sum of probabilities in stratum {h} is very small: {stratum_sum_p}")
         
         # Calculate weights with stability measures
         weights_ = []
