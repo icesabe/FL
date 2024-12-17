@@ -1,24 +1,4 @@
 Google Colab Link: https://colab.research.google.com/drive/1-9u0vMrjcoQcXVXqSAP9ltl-yIz8MQxg <br />
-<br />
-🟥 As of December 7, 2024, 5:25 PM 🟥 <br />
-**FedProx_stratified_dp_sampling_compressed_gradients()** in fedprox_func.py is different from FedProx_stratified_dp_sampling() in the following ways: <br />
-1. Uses compressed gradients of each client to stratify the clients. <br />
-       - The functions used are client_compress_gradient(), collect_compressed_gradients(), and stratify_clients_compressed_gradients().
-2. Uses Neyman allocation with N_h (number of clients in stratum h) and S_h (variability of stratum h in terms of clients' compressed gradients) to find m_h. <br />
-       - The function used is cal_allocation_number_NS().
-3. Uses ||(Z_t)^k||, norm of compressed gradients of each client to compute the client's (p_t)^k. <br />
-<br />
-The code above needs to be double checked. More changes still need to be made so that the code is aligned with the pseudocode Jordan wrote in our meeting today, specifically, the parts he wrote after "Each round:"<br />
-<br />
-If time permits: <br />
-1. Add exception checks to check for division by zero. <br />
-2. Reorganize code (put some functions in fedprox_func.py to utils.py). <br />
-
-
-<br />
-<br />
-<br />
-
 # FedSTS: A Stratified Client Selection Framework for Consistently Fast Federated Learning
 
 A PyTorch implementation of our paper FedSTS: A Stratified Client Selection Framework for Consistently Fast Federated Learning.
