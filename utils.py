@@ -1,4 +1,5 @@
 import numpy as np
+import torch.nn as nn
 import pandas as pd
 import pickle
 from math import floor
