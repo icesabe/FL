@@ -101,76 +101,6 @@ def client_compress_gradient(client_model, train_data, d_prime):
     
     return centers, indices
 
-def client_compress_gradient2(client_model, train_data, d_prime):
-    """
-    Compute and compress gradients for a client
-    """
-    # Ensure all parameters require gradients
-    for name, param in client_model.named_parameters():
-        if not param.requires_grad:
-            print(f"Warning: Parameter {name} does not require gradients.")
-            param.requires_grad = True
-
-    # Get gradient from all batches
-    accumulated_grad = None
-    batch_count = 0
-    
-    for features, labels in train_data:
-        print(f"Sample Labels: {labels}")
-
-        if config.USE_GPU:
-            features = features.cuda()
-            labels = labels.cuda()
-            
-        predictions = client_model(features)
-        loss = loss_classifier(predictions, labels)
-        print(f"Batch Loss: {loss.item()}")
-        loss.backward()
-        
-        # Accumulate gradients
-        if accumulated_grad is None:
-            accumulated_grad = []
-            for param in client_model.parameters():
-                if param.grad is not None:
-                    accumulated_grad.append(param.grad.data.clone())
-        else:
-            for i, param in enumerate(client_model.parameters()):
-                if param.grad is not None:
-                    accumulated_grad[i] += param.grad.data
-                    print(f"Accumulated gradient {i} after batch {batch_count}: {accumulated_grad[i].flatten()[:10]}")
-        
-        batch_count += 1
-        client_model.zero_grad()
-        
-    # Normalize and average the accumulated gradients
-    for i, grad in enumerate(accumulated_grad):
-        norm = torch.norm(grad)
-        if norm > 0:
-            accumulated_grad[i] /= norm
-        accumulated_grad[i] /= batch_count
-        print(f"Normalized and averaged gradient {i}: {accumulated_grad[i].flatten()[:10]}")
-        
-    # Flatten averaged gradient
-    grad = []
-    for acc_grad in accumulated_grad:
-        grad.append(acc_grad.flatten())
-    flat_grad = torch.cat(grad)
-
-    print(f"Flattened gradient shape: {flat_grad.shape}, sample: {flat_grad[:10]}")
-    
-    # Compress using k-means
-    grad_np = flat_grad.cpu().detach().numpy()
-    print(f"K-means input min: {grad_np.min()}, max: {grad_np.max()}, sample: {grad_np[:10]}")
-    
-    kmeans = KMeans(n_clusters=d_prime, random_state=0)
-    indices = kmeans.fit_predict(grad_np.reshape(-1, 1))
-    centers = kmeans.cluster_centers_.flatten()
-
-    print(f"K-means centers: {centers}")
-    print(f"Cluster indices (sample): {indices[:10]}")  # First 10 indices
-    
-    return centers, indices
-
 def collect_compressed_gradients(model, training_sets, d_prime):
     """
     Collect compressed gradients from all clients
@@ -190,7 +120,6 @@ def collect_compressed_gradients(model, training_sets, d_prime):
 
         # Each client computes and compresses their gradient
         local_model = deepcopy(model)
-        #compressed_grad, indices = client_compress_gradient(local_model, train_data, d_prime)
         compressed_grad, indices = client_compress_gradient(local_model, train_data, d_prime)
         
         # Server collects compressed gradients
