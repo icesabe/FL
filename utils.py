@@ -39,6 +39,92 @@ def get_num_cnt(args, list_dls_train):
     pd.set_option('display.max_rows', None)
     print(num_cnt_table)
 
+def loss_classifier(predictions, labels):
+
+    criterion = nn.CrossEntropyLoss()
+    return criterion(predictions, labels)
+
+def client_compress_gradient(client_model, train_data, d_prime):
+    """
+    Compute and compress gradients for a client
+    """
+    # Get gradient from all batches
+    accumulated_grad = None
+    batch_count = 0
+    
+    for features, labels in train_data:
+        if config.USE_GPU:
+            features = features.cuda()
+            labels = labels.cuda()
+            
+        predictions = client_model(features)
+        loss = loss_classifier(predictions, labels)
+        loss.backward()
+        
+        # Accumulate gradients
+        if accumulated_grad is None:
+            accumulated_grad = []
+            for param in client_model.parameters():
+                if param.grad is not None:
+                    accumulated_grad.append(param.grad.data.clone())
+        else:
+            for i, param in enumerate(client_model.parameters()):
+                if param.grad is not None:
+                    accumulated_grad[i] += param.grad.data
+        
+        batch_count += 1
+        client_model.zero_grad()
+        
+    # Average the accumulated gradients
+    for grad in accumulated_grad:
+        grad /= batch_count
+        
+    # Flatten averaged gradient
+    grad = []
+    for acc_grad in accumulated_grad:
+        grad.append(acc_grad.flatten())
+    flat_grad = torch.cat(grad)
+
+    print(f"Flattened gradient shape: {flat_grad.shape}, sample: {flat_grad[:10]}")  # First 10 values
+    
+    # Compress using k-means
+    grad_np = flat_grad.cpu().detach().numpy()
+    kmeans = KMeans(n_clusters=d_prime, random_state=0)
+    indices = kmeans.fit_predict(grad_np.reshape(-1, 1))
+    centers = kmeans.cluster_centers_.flatten()
+
+    print(f"K-means centers: {centers}")
+    print(f"Cluster indices (sample): {indices[:10]}")  # First 10 indices
+    
+    return centers, indices
+
+def collect_compressed_gradients(model, training_sets, d_prime):
+    """
+    Collect compressed gradients from all clients
+    Args:
+        model: global model
+        training_sets: list of training datasets
+        d_prime: compression parameter
+    Returns:
+        all_compressed_grads: compressed gradients from all clients
+        all_indices: indices for each client's compressed gradients
+    """
+    all_compressed_grads = []
+    all_indices = []
+    
+    for client_id, train_data in enumerate(training_sets):
+        print(f"\nClient {client_id + 1}:")
+
+        # Each client computes and compresses their gradient
+        local_model = deepcopy(model)
+        compressed_grad, indices = client_compress_gradient(local_model, train_data, d_prime)
+        
+        # Server collects compressed gradients
+        all_compressed_grads.append(compressed_grad)
+        all_indices.append(indices)
+    
+    return np.array(all_compressed_grads), all_indices
+
 def stratify_clients(args):
     partition_result_path = f"dataset/data_partition_result/{args.dataset}_{args.partition}.pkl"
     print("@@@ Start reading data_partition_result file：", partition_result_path, " @@@")
