@@ -54,6 +54,10 @@ def client_compress_gradient(client_model, train_data, d_prime):
     batch_count = 0
     
     for features, labels in train_data:
+        print(f"Features shape: {features.shape}, Labels shape: {labels.shape}")
+        print(f"Sample Features: {features[0][:5]}")  # Print first 5 values of the first feature
+        print(f"Sample Labels: {labels[:5]}")
+
         if config.USE_GPU:
             features = features.cuda()
             labels = labels.cuda()
