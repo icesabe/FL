@@ -88,7 +88,7 @@ def client_compress_gradient(client_model, train_data, d_prime):
         grad.append(acc_grad.flatten())
     flat_grad = torch.cat(grad)
 
-    print(f"Flattened gradient shape: {flat_grad.shape}, sample: {flat_grad[:10]}")  # First 10 values
+    print(f"Flattened gradient shape: {flat_grad.shape}, sample: {flat_grad}")  
     
     # Compress using k-means
     grad_np = flat_grad.cpu().detach().numpy()
@@ -97,7 +97,7 @@ def client_compress_gradient(client_model, train_data, d_prime):
     centers = kmeans.cluster_centers_.flatten()
 
     print(f"K-means centers: {centers}")
-    print(f"Cluster indices (sample): {indices[:10]}")  # First 10 indices
+    print(f"Cluster indices (sample): {indices}")  
     
     return centers, indices
 
@@ -191,7 +191,7 @@ def collect_compressed_gradients(model, training_sets, d_prime):
         # Each client computes and compresses their gradient
         local_model = deepcopy(model)
         #compressed_grad, indices = client_compress_gradient(local_model, train_data, d_prime)
-        compressed_grad, indices = client_compress_gradient2(local_model, train_data, d_prime)
+        compressed_grad, indices = client_compress_gradient(local_model, train_data, d_prime)
         
         # Server collects compressed gradients
         all_compressed_grads.append(compressed_grad)
