@@ -145,7 +145,7 @@ import matplotlib.pyplot as plt
 
 
 def load_results(args):
-    """Dynamically load training results for accuracy and loss."""
+    """Dynamically load and aggregate training results for accuracy and loss."""
     results = {}
     methods = {
         'random': 'Random',
@@ -165,22 +165,22 @@ def load_results(args):
         loss_files = glob.glob(loss_pattern)
 
         if acc_files and loss_files:
-            # Pick the first matching file for both accuracy and loss
-            acc_file = acc_files[0]
-            loss_file = loss_files[0]
+            # Pick the first matching file (or the most recent)
+            acc_file = sorted(acc_files, key=os.path.getmtime)[-1]
+            loss_file = sorted(loss_files, key=os.path.getmtime)[-1]
 
             try:
                 with open(acc_file, 'rb') as acc_f, open(loss_file, 'rb') as loss_f:
                     acc_data = pickle.load(acc_f)
                     loss_data = pickle.load(loss_f)
 
-                    # Ensure valid data format
+                    # Validate data format
                     if isinstance(acc_data, np.ndarray) and isinstance(loss_data, np.ndarray):
                         results[method_name] = {
-                            'train_loss': loss_data.tolist(),
-                            'test_acc': acc_data.tolist()
+                            'train_loss': np.mean(loss_data, axis=1).tolist(),  # Aggregate across clients
+                            'test_acc': np.mean(acc_data, axis=1).tolist()
                         }
-                        print(f"Loaded results for {method_name}")
+                        print(f"Loaded and aggregated results for {method_name}")
                     else:
                         print(f"Invalid data format in files for {method_name}")
             except Exception as e:
