@@ -54,7 +54,6 @@ def client_compress_gradient(client_model, train_data, d_prime):
     batch_count = 0
     
     for features, labels in train_data:
-        print(f"Sample Labels: {labels}")
 
         if config.USE_GPU:
             features = features.cuda()
@@ -86,18 +85,13 @@ def client_compress_gradient(client_model, train_data, d_prime):
     grad = []
     for acc_grad in accumulated_grad:
         grad.append(acc_grad.flatten())
-    flat_grad = torch.cat(grad)
-
-    print(f"Flattened gradient shape: {flat_grad.shape}, sample: {flat_grad}")  
+    flat_grad = torch.cat(grad) 
     
     # Compress using k-means
     grad_np = flat_grad.cpu().detach().numpy()
     kmeans = KMeans(n_clusters=d_prime, random_state=0)
     indices = kmeans.fit_predict(grad_np.reshape(-1, 1))
     centers = kmeans.cluster_centers_.flatten()
-
-    print(f"K-means centers: {centers}")
-    print(f"Cluster indices (sample): {indices}")  
     
     return centers, indices
 
