@@ -313,6 +313,7 @@ class Estimator:
     
 def local_data_sampling(dataset,K_desired,hatN):
     psample = K_desired/hatN
+    psample = min(psample, 1.0) 
     sampled_features = []
     sampled_labels = []
     for features, labels in dataset:
