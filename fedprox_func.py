@@ -24,85 +24,6 @@ def get_variable(x):
     return x.cuda() if config.USE_GPU else x
     # requires_grad=True with tensor x in newer PyTorch versions
 
-def loss_classifier(predictions, labels):
-
-    criterion = nn.CrossEntropyLoss()
-    return criterion(predictions, labels)
-
-def client_compress_gradient(client_model, train_data, d_prime):
-    """
-    Compute and compress gradients for a client
-    """
-    # Get gradient from all batches
-    accumulated_grad = None
-    batch_count = 0
-    
-    for features, labels in train_data:
-        if config.USE_GPU:
-            features = features.cuda()
-            labels = labels.cuda()
-            
-        predictions = client_model(features)
-        loss = loss_classifier(predictions, labels)
-        loss.backward()
-        
-        # Accumulate gradients
-        if accumulated_grad is None:
-            accumulated_grad = []
-            for param in client_model.parameters():
-                if param.grad is not None:
-                    accumulated_grad.append(param.grad.data.clone())
-        else:
-            for i, param in enumerate(client_model.parameters()):
-                if param.grad is not None:
-                    accumulated_grad[i] += param.grad.data
-        
-        batch_count += 1
-        client_model.zero_grad()
-        
-    # Average the accumulated gradients
-    for grad in accumulated_grad:
-        grad /= batch_count
-        
-    # Flatten averaged gradient
-    grad = []
-    for acc_grad in accumulated_grad:
-        grad.append(acc_grad.flatten())
-    flat_grad = torch.cat(grad)
-    
-    # Compress using k-means
-    grad_np = flat_grad.cpu().detach().numpy()
-    kmeans = KMeans(n_clusters=d_prime, random_state=0)
-    indices = kmeans.fit_predict(grad_np.reshape(-1, 1))
-    centers = kmeans.cluster_centers_.flatten()
-    
-    return centers, indices
-
-def collect_compressed_gradients(model, training_sets, d_prime):
-    """
-    Collect compressed gradients from all clients
-    Args:
-        model: global model
-        training_sets: list of training datasets
-        d_prime: compression parameter
-    Returns:
-        all_compressed_grads: compressed gradients from all clients
-        all_indices: indices for each client's compressed gradients
-    """
-    all_compressed_grads = []
-    all_indices = []
-    
-    for client_id, train_data in enumerate(training_sets):
-        # Each client computes and compresses their gradient
-        local_model = deepcopy(model)
-        compressed_grad, indices = client_compress_gradient(local_model, train_data, d_prime)
-        
-        # Server collects compressed gradients
-        all_compressed_grads.append(compressed_grad)
-        all_indices.append(indices)
-    
-    return np.array(all_compressed_grads), all_indices
-
 def stratify_clients_compressed_gradients(args, compressed_grads):
     """
     Args:
@@ -1303,6 +1224,7 @@ def run(args, model_mnist, n_sampled, list_dls_train, list_dls_test, file_name):
             args.alpha,
             args.M,
             args.K_desired,
+            args.d_prime,
             )
     """RUN FEDAVG WITH dp sampling and compressed client gradients"""
     if (args.sampling == "comp_grads") and (
