@@ -141,130 +141,89 @@ def plot_training_metrics(methods, labels, n_SGD, batch_size, n_iter, q, mu, alp
     plt.close()
 
 def plot_algorithm_comparison(results, alpha, q, dataset='MNIST'):
-    """Plot algorithm comparison for given alpha and q values."""
-    plt.figure(figsize=(15, 5))
+    """Plot comparison of different algorithms."""
+    acc_results, loss_results = results
     
     # Plot training loss
-    plt.subplot(1, 2, 1)
-    for method, data in results.items():
-        if 'train_loss' in data and len(data['train_loss']) > 0:
-            plt.plot(data['train_loss'], '-', linewidth=2, label=method)
+    plt.figure(figsize=(8, 6))
+    for method, data in loss_results.items():
+        plt.plot(range(len(data)), data, label=method, linewidth=2)
+    
     plt.title(f'Training Loss (α={alpha}, q={q})')
-    plt.xlabel('Round')
+    plt.xlabel('Communication Rounds')
     plt.ylabel('Loss')
-    plt.grid(True)
-    plt.legend(loc='upper right')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'plots/{dataset}_loss_alpha{alpha}_q{q}.png', 
+                bbox_inches='tight', dpi=300)
+    plt.close()
     
     # Plot test accuracy
-    plt.subplot(1, 2, 2)
-    for method, data in results.items():
-        if 'test_acc' in data and len(data['test_acc']) > 0:
-            plt.plot(data['test_acc'], '-', linewidth=2, label=method)
+    plt.figure(figsize=(8, 6))
+    for method, data in acc_results.items():
+        plt.plot(range(len(data)), data, label=method, linewidth=2)
+    
     plt.title(f'Test Accuracy (α={alpha}, q={q})')
-    plt.xlabel('Round')
+    plt.xlabel('Communication Rounds')
     plt.ylabel('Accuracy (%)')
-    plt.grid(True)
-    plt.legend(loc='lower right')
-    
-    plt.tight_layout()
-    plt.savefig(f'plots/{dataset}_comparison_alpha{alpha}_q{q}.png', bbox_inches='tight', dpi=300)
-    plt.close()
-
-def plot_dirichlet_distribution(alpha, dataset_sizes, dataset='MNIST'):
-    """Plot Dirichlet distribution visualization."""
-    if len(dataset_sizes) == 0:
-        print("Warning: No dataset sizes provided for Dirichlet distribution plot")
-        return
-        
-    plt.figure(figsize=(12, 6))
-    x = range(len(dataset_sizes))
-    plt.bar(x, dataset_sizes, alpha=0.7, label='Client Data Size')
-    plt.title(f'Dirichlet Distribution (α={alpha})')
-    plt.xlabel('Client Index')
-    plt.ylabel('Dataset Size')
     plt.grid(True, alpha=0.3)
     plt.legend()
-    
-    # Add some statistics as text
-    stats_text = f'Mean: {np.mean(dataset_sizes):.1f}\nStd: {np.std(dataset_sizes):.1f}\nMin: {np.min(dataset_sizes):.1f}\nMax: {np.max(dataset_sizes):.1f}'
-    plt.text(0.95, 0.95, stats_text,
-             transform=plt.gca().transAxes,
-             verticalalignment='top',
-             horizontalalignment='right',
-             bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-    
     plt.tight_layout()
-    plt.savefig(f'plots/{dataset}_dirichlet_alpha{alpha}.png', bbox_inches='tight', dpi=300)
+    plt.savefig(f'plots/{dataset}_accuracy_alpha{alpha}_q{q}.png', 
+                bbox_inches='tight', dpi=300)
     plt.close()
 
-def plot_stratification_results(strata_sizes, strata_assignments, alpha, dataset='MNIST'):
-    """Plot stratification results."""
-    if not strata_sizes or not strata_assignments:
-        print("Warning: No stratification data provided")
-        return
-        
-    plt.figure(figsize=(15, 5))
-    
-    # Plot stratum sizes
-    plt.subplot(1, 2, 1)
-    x = range(len(strata_sizes))
-    plt.bar(x, strata_sizes, alpha=0.7, label='Stratum Size')
-    plt.title(f'Stratum Sizes (α={alpha})')
-    plt.xlabel('Stratum Index')
-    plt.ylabel('Number of Clients')
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    
-    # Add size labels on top of bars
-    for i, v in enumerate(strata_sizes):
-        plt.text(i, v, str(v), ha='center', va='bottom')
-    
-    # Plot client assignments
-    plt.subplot(1, 2, 2)
-    unique_strata = sorted(set(strata_assignments))
-    colors = plt.cm.get_cmap('tab20')(np.linspace(0, 1, len(unique_strata)))
-    
-    # Create scatter plots with labels
-    for i, stratum in enumerate(unique_strata):
-        mask = np.array(strata_assignments) == stratum
-        if np.any(mask):
-            plt.scatter(np.where(mask)[0], [1]*np.sum(mask), 
-                       c=[colors[i]], 
-                       label=f'Stratum {stratum}',
-                       alpha=0.7, s=50)
-    
-    plt.title(f'Client Stratum Assignments (α={alpha})')
-    plt.xlabel('Client Index')
-    plt.yticks([])
-    plt.grid(True, alpha=0.3)
-    
-    # Adjust legend position and size
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', 
-              borderaxespad=0., ncol=2 if len(unique_strata) > 10 else 1)
-    
-    plt.tight_layout()
-    plt.savefig(f'plots/{dataset}_stratification_alpha{alpha}.png', bbox_inches='tight', dpi=300)
-    plt.close()
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import dirichlet
 
-# Create plots directory if it doesn't exist
-if not os.path.exists('plots'):
-    os.makedirs('plots')
+def sample_dirichlet(alpha, num_samples=1000):
+    """
+    Samples points from a symmetric Dirichlet distribution.
 
-# Example usage:
-if __name__ == "__main__":
-    # Plot Dirichlet distribution effects
-    alphas = [0.001, 0.01, 0.1, 1.0]
-    plot_dirichlet_distribution(alphas)
-    
-    # Plot stratification results
-    plot_stratification_results(alphas)
-    
-    # Plot algorithm comparison
-    plot_algorithm_comparison(
-        metric="both",
-        n_SGD=80,
-        q=0.1,
-        mu=0.0,
-        alpha=0.001,
-        smooth=True
-    ) 
+    Parameters:
+    - alpha: float, concentration parameter.
+    - num_samples: int, number of samples to generate.
+
+    Returns:
+    - samples: np.ndarray of shape (num_samples, 3)
+    """
+    alpha_vector = [alpha, alpha, alpha]
+    samples = dirichlet.rvs(alpha_vector, size=num_samples)
+    return samples
+
+def plot_samples(samples, ax, title):
+    """
+    Plots a 2D scatter plot of Dirichlet samples.
+
+    Parameters:
+    - samples: np.ndarray of shape (num_samples, 3)
+    - ax: matplotlib axis to plot on.
+    - title: str, title of the plot.
+    """
+    # Project 3D simplex to 2D using a simple transformation
+    x = samples[:, 0]
+    y = samples[:, 1]
+    ax.scatter(x, y, alpha=0.5, s=10, color='blue')
+    ax.set_title(title, fontsize=14)
+    ax.set_xlabel('$X_1$', fontsize=12)
+    ax.set_ylabel('$X_2$', fontsize=12)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect('equal')
+
+# Define alpha parameters
+alpha_values = [0.01, 0.001]
+titles = [r'Dirichlet Samples ($\alpha = 0.01$)',
+          r'Dirichlet Samples ($\alpha = 0.001$)']
+
+# Create side-by-side scatter plots
+fig, axes = plt.subplots(1, 2, figsize=(18, 8))
+
+for i, alpha in enumerate(alpha_values):
+    samples = sample_dirichlet(alpha, num_samples=5000)
+    plot_samples(samples, axes[i], titles[i])
+
+plt.tight_layout()
+plt.show()
