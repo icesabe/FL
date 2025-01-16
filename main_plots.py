@@ -143,8 +143,9 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def load_results(args):
-    """Dynamically load training results based on available files."""
+    """Dynamically load training results for accuracy and loss."""
     results = {}
     methods = {
         'random': 'Random',
@@ -156,30 +157,39 @@ def load_results(args):
     }
     
     for method_key, method_name in methods.items():
-        # Dynamically find files matching the method and partition
-        file_pattern = f"saved_exp_info/acc/MNIST_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
-        matching_files = glob.glob(file_pattern)
-        
-        if matching_files:
-            # Pick the first matching file
-            file_path = matching_files[0]
+        # Patterns for accuracy and loss files
+        acc_pattern = f"saved_exp_info/acc/MNIST_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
+        loss_pattern = f"saved_exp_info/loss/MNIST_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
+
+        acc_files = glob.glob(acc_pattern)
+        loss_files = glob.glob(loss_pattern)
+
+        if acc_files and loss_files:
+            # Pick the first matching file for both accuracy and loss
+            acc_file = acc_files[0]
+            loss_file = loss_files[0]
+
             try:
-                with open(file_path, 'rb') as f:
-                    data = pickle.load(f)
-                    if isinstance(data, dict):
+                with open(acc_file, 'rb') as acc_f, open(loss_file, 'rb') as loss_f:
+                    acc_data = pickle.load(acc_f)
+                    loss_data = pickle.load(loss_f)
+
+                    # Ensure valid data format
+                    if isinstance(acc_data, np.ndarray) and isinstance(loss_data, np.ndarray):
                         results[method_name] = {
-                            'train_loss': data.get('train_loss', []),
-                            'test_acc': data.get('test_acc', [])
+                            'train_loss': loss_data.tolist(),
+                            'test_acc': acc_data.tolist()
                         }
-                        print(f"Loaded results for {method_name} from {file_path}")
+                        print(f"Loaded results for {method_name}")
                     else:
-                        print(f"Invalid data format in {file_path} for {method_name}")
+                        print(f"Invalid data format in files for {method_name}")
             except Exception as e:
-                print(f"Error loading {file_path}: {str(e)}")
+                print(f"Error loading files for {method_name}: {str(e)}")
         else:
-            print(f"No files found for method {method_name} (pattern: {file_pattern})")
+            print(f"No files found for method {method_name}")
     
     return results
+
 
 def plot_algorithm_comparison(results, partition, sample_ratio, dataset='MNIST'):
     """Plot algorithm comparison for training loss and accuracy."""
@@ -217,6 +227,7 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset='MNIST')
     print(f"Saved comparison plot to {plot_path}")
     plt.close()
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--plot_type', type=str, default='comparison', choices=['comparison'])
@@ -235,6 +246,8 @@ def main():
     results = load_results(args)
     plot_algorithm_comparison(results, args.partition, args.sample_ratio, dataset=args.dataset)
 
+
 if __name__ == "__main__":
     main()
+
 
