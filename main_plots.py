@@ -132,21 +132,19 @@
 
 # if __name__ == "__main__":
 #     main() 
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 import argparse
+import glob
 import os
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from plots_func import (
-    plot_dirichlet_distribution,
-    plot_stratification_results,
-    plot_algorithm_comparison,
-)
 
 def load_results(args):
-    """Load training results from PKL files."""
+    """Dynamically load training results based on available files."""
     results = {}
     methods = {
         'random': 'Random',
@@ -154,88 +152,89 @@ def load_results(args):
         'ours': 'Stratified',
         'dp': 'DP',
         'comp_grads': 'Compressed Gradients',
-        'dp_comp_grads': 'DP + Compressed Gradients',
+        'dp_comp_grads': 'DP + Compressed'
     }
-
+    
     for method_key, method_name in methods.items():
-        # Construct file names dynamically
-        if args.partition == 'dirichlet':
-            acc_file = f"saved_exp_info/acc/MNIST_dir_{args.alpha}_{method_key}_p{args.q}_lr0.01_b{args.batch_size}_n{args.n_SGD}_i{args.n_iter}_s10_d1.0_m{args.mu}_s0.pkl"
-        else:
-            acc_file = f"saved_exp_info/acc/MNIST_{args.partition}_{method_key}_p{args.q}_lr0.01_b{args.batch_size}_n{args.n_SGD}_i{args.n_iter}_s10_d1.0_m{args.mu}_s0.pkl"
-
-        try:
-            if os.path.exists(acc_file):
-                with open(acc_file, 'rb') as f:
+        # Dynamically find files matching the method and partition
+        file_pattern = f"saved_exp_info/acc/MNIST_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
+        matching_files = glob.glob(file_pattern)
+        
+        if matching_files:
+            # Pick the first matching file
+            file_path = matching_files[0]
+            try:
+                with open(file_path, 'rb') as f:
                     data = pickle.load(f)
                     if isinstance(data, dict):
                         results[method_name] = {
                             'train_loss': data.get('train_loss', []),
-                            'test_acc': data.get('test_acc', []),
+                            'test_acc': data.get('test_acc', [])
                         }
-                        print(f"Loaded results for {method_name}")
+                        print(f"Loaded results for {method_name} from {file_path}")
                     else:
-                        print(f"Invalid data format for {method_name}")
-            else:
-                print(f"File not found: {acc_file}")
-        except Exception as e:
-            print(f"Error loading {method_name}: {str(e)}")
+                        print(f"Invalid data format in {file_path} for {method_name}")
+            except Exception as e:
+                print(f"Error loading {file_path}: {str(e)}")
+        else:
+            print(f"No files found for method {method_name} (pattern: {file_pattern})")
+    
     return results
 
-def load_partition_data(args):
-    """Load data partition information."""
-    partition_file = f"dataset/data_partition_result/MNIST_{args.partition}.pkl"
-    if args.partition == 'dirichlet':
-        partition_file = f"dataset/data_partition_result/MNIST_dir_{args.alpha}.pkl"
+def plot_algorithm_comparison(results, partition, sample_ratio, dataset='MNIST'):
+    """Plot algorithm comparison for training loss and accuracy."""
+    if not results:
+        print("No results to plot. Ensure valid files are present.")
+        return
 
-    if os.path.exists(partition_file):
-        with open(partition_file, 'rb') as f:
-            data = pickle.load(f)
-            dataset_sizes = [len(client_data) for client_data in data] if isinstance(data, list) else []
-            strata_sizes = []
-            strata_assignments = []
+    plt.figure(figsize=(15, 5))
 
-            print(f"Loaded partition data from {partition_file}")
-            return np.array(dataset_sizes), strata_sizes, strata_assignments
-    else:
-        print(f"Partition file not found: {partition_file}")
-        return np.array([]), [], []
+    # Plot training loss
+    plt.subplot(1, 2, 1)
+    for method, data in results.items():
+        if 'train_loss' in data and len(data['train_loss']) > 0:
+            plt.plot(data['train_loss'], '-', linewidth=2, label=method)
+    plt.title(f'Training Loss ({dataset}, Partition={partition}, q={sample_ratio})')
+    plt.xlabel('Round')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    plt.legend(loc='upper right')
+
+    # Plot test accuracy
+    plt.subplot(1, 2, 2)
+    for method, data in results.items():
+        if 'test_acc' in data and len(data['test_acc']) > 0:
+            plt.plot(data['test_acc'], '-', linewidth=2, label=method)
+    plt.title(f'Test Accuracy ({dataset}, Partition={partition}, q={sample_ratio})')
+    plt.xlabel('Round')
+    plt.ylabel('Accuracy (%)')
+    plt.grid(True)
+    plt.legend(loc='lower right')
+
+    plt.tight_layout()
+    plot_path = f'plots/{dataset}_{partition}_comparison_q{sample_ratio}.png'
+    plt.savefig(plot_path, bbox_inches='tight', dpi=300)
+    print(f"Saved comparison plot to {plot_path}")
+    plt.close()
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--plot_type', type=str, default='all', choices=['all', 'dirichlet', 'stratification', 'comparison'])
-    parser.add_argument('--dataset', type=str, default='MNIST')
+    parser.add_argument('--plot_type', type=str, default='comparison', choices=['comparison'])
     parser.add_argument('--partition', type=str, default='iid', choices=['iid', 'dirichlet', 'shard'])
-    parser.add_argument('--alpha', type=float, default=0.01, help="Dirichlet alpha value (only for dirichlet partition).")
-    parser.add_argument('--q', type=float, default=0.1, help="Sampling ratio.")
-    parser.add_argument('--n_SGD', type=int, default=50)
+    parser.add_argument('--sample_ratio', type=float, default=0.1)
     parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--n_iter', type=int, default=200)
-    parser.add_argument('--mu', type=float, default=0.0)
+    parser.add_argument('--dataset', type=str, default='MNIST')
     
     args = parser.parse_args()
-    
+
     # Create plots directory if it doesn't exist
     os.makedirs('plots', exist_ok=True)
-    
-    # Load partition data once for both dirichlet and stratification plots
-    dataset_sizes, strata_sizes, strata_assignments = load_partition_data(args)
-    
-    if args.plot_type in ['dirichlet', 'all'] and args.partition == 'dirichlet':
-        print(f"Generating Dirichlet distribution plots for α={args.alpha}...")
-        plot_dirichlet_distribution(args.alpha, dataset_sizes, args.dataset)
-    
-    if args.plot_type in ['stratification', 'all'] and args.partition == 'dirichlet':
-        print(f"Generating stratification results plots for α={args.alpha}...")
-        plot_stratification_results(strata_sizes, strata_assignments, args.alpha, args.dataset)
-    
-    if args.plot_type in ['comparison', 'all']:
-        print(f"Generating algorithm comparison plots for partition={args.partition}, q={args.q}...")
-        results = load_results(args)
-        if results:
-            plot_algorithm_comparison(results, args.alpha if args.partition == 'dirichlet' else "N/A", args.q, args.dataset)
-        else:
-            print("No results found. Please make sure the result files exist.")
+
+    # Load results and plot
+    print(f"Generating algorithm comparison plots for partition={args.partition}, q={args.sample_ratio}...")
+    results = load_results(args)
+    plot_algorithm_comparison(results, args.partition, args.sample_ratio, dataset=args.dataset)
 
 if __name__ == "__main__":
     main()
+
