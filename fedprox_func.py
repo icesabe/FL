@@ -1224,6 +1224,7 @@ def run(args, model_mnist, n_sampled, list_dls_train, list_dls_test, file_name):
             args.alpha,
             args.M,
             args.K_desired,
+            args.d_prime,
             )
     """RUN FEDAVG WITH dp sampling and compressed client gradients"""
     if (args.sampling == "comp_grads") and (
