@@ -968,7 +968,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     # K_desired is now derived from the total data * fraction
     K_desired = int(num_data * K_desired)
     weights = n_samples / np.sum(n_samples)
-    print("Clients' weights:", weights)
+    #print("Clients' weights:", weights)
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
@@ -1084,7 +1084,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
         new_model = deepcopy(model)
         # Aggregate model updates
         for layer_weights in new_model.parameters():
-            layer_weights.data.zero()
+            layer_weights.data.zero_()
         n_contrib = len(clients_params)
         if n_contrib > 0:
             weights_ = [1.0 / n_sampled] * n_contrib
