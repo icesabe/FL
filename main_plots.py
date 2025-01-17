@@ -8,7 +8,6 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 def load_results(args):
     """Dynamically load and aggregate training results for accuracy and loss."""
     results = {}
@@ -23,14 +22,14 @@ def load_results(args):
     
     for method_key, method_name in methods.items():
         # Patterns for accuracy and loss files
-        acc_pattern = f"saved_exp_info/acc/MNIST_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
-        loss_pattern = f"saved_exp_info/loss/MNIST_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
+        acc_pattern = f"saved_exp_info/acc/{args.dataset}_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
+        loss_pattern = f"saved_exp_info/loss/{args.dataset}_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
 
         acc_files = glob.glob(acc_pattern)
         loss_files = glob.glob(loss_pattern)
 
         if acc_files and loss_files:
-            # Pick the first matching file (or the most recent)
+            # Pick the most recent matching files
             acc_file = sorted(acc_files, key=os.path.getmtime)[-1]
             loss_file = sorted(loss_files, key=os.path.getmtime)[-1]
 
@@ -55,8 +54,7 @@ def load_results(args):
     
     return results
 
-
-def plot_algorithm_comparison(results, partition, sample_ratio, dataset='MNIST'):
+def plot_algorithm_comparison(results, partition, sample_ratio, dataset):
     """Plot algorithm comparison for training loss and accuracy."""
     if not results:
         print("No results to plot. Ensure valid files are present.")
@@ -92,14 +90,13 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset='MNIST')
     print(f"Saved comparison plot to {plot_path}")
     plt.close()
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--plot_type', type=str, default='comparison', choices=['comparison'])
     parser.add_argument('--partition', type=str, default='iid', choices=['iid', 'dirichlet', 'shard'])
     parser.add_argument('--sample_ratio', type=float, default=0.1)
     parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--dataset', type=str, default='MNIST')
+    parser.add_argument('--dataset', type=str, default='MNIST', choices=['MNIST', 'CIFAR10', 'CIFAR100'])
     
     args = parser.parse_args()
 
@@ -107,12 +104,9 @@ def main():
     os.makedirs('plots', exist_ok=True)
 
     # Load results and plot
-    print(f"Generating algorithm comparison plots for partition={args.partition}, q={args.sample_ratio}...")
+    print(f"Generating algorithm comparison plots for dataset={args.dataset}, partition={args.partition}, q={args.sample_ratio}...")
     results = load_results(args)
     plot_algorithm_comparison(results, args.partition, args.sample_ratio, dataset=args.dataset)
 
-
 if __name__ == "__main__":
     main()
-
-
