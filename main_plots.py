@@ -14,10 +14,10 @@ def load_results(args):
     methods = {
         'random': 'Random',
         'importance': 'Importance',
-        'ours': 'Stratified',
+        'ours': 'FedSTS',
         'dp': 'DP',
         'comp_grads': 'Compressed Gradients',
-        'dp_comp_grads': 'DP + Compressed'
+        'dp_comp_grads': 'FedSTaS'
     }
     
     for method_key, method_name in methods.items():
