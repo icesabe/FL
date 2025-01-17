@@ -8,7 +8,7 @@ import torch
 from collections import defaultdict
 from sklearn import metrics
 from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 from copy import deepcopy
 import config
 
@@ -89,7 +89,7 @@ def client_compress_gradient(client_model, train_data, d_prime):
     
     # Compress using k-means
     grad_np = flat_grad.cpu().detach().numpy()
-    kmeans = KMeans(n_clusters=d_prime, random_state=0)
+    kmeans = MiniBatchKMeans(n_clusters=d_prime, batch_size = 1024 ,random_state=0)
     indices = kmeans.fit_predict(grad_np.reshape(-1, 1))
     centers = kmeans.cluster_centers_.flatten()
     
@@ -211,6 +211,24 @@ def sample_clients_with_allocation(chosen_p, allocation_number):
     return sampled_clients
 
 def cal_allocation_number(partition_result, stratify_result, sample_ratio):
+    """
+    Calculate allocation numbers for each stratum based on the cohesion and specified
+    sampling ratio. This function computes weights derived from the average cohesion
+    of each stratum, determines initial allocation numbers proportional to these weights,
+    and adjusts the allocation values to ensure the total matches the desired sample ratio.
+
+    :param partition_result: List containing the partition information for each client
+        in the dataset.
+    :param stratify_result: A nested list representing the stratified partitions of clients.
+        Each sublist corresponds to a stratum, with each element being an individual client.
+    :param sample_ratio: A float representing the ratio of the total sample size to
+        the entire population size, used to determine the proportional allocation numbers.
+    :return: A numpy array containing the integer allocation number for each stratum, where
+        the sum of all allocation numbers equals approximately the specified sample ratio
+        multiplied by 100.
+    """
+    #Below is commented out because it is not used in the current implementation
+    '''
     cohesion_list = []
     for row_strata in stratify_result:
         dist = np.zeros(len(row_strata))
@@ -244,7 +262,80 @@ def cal_allocation_number(partition_result, stratify_result, sample_ratio):
         if allocation_number[i] == 0:
             allocation_number[i] += max(1, int(round((sample_ratio * 100 - np.sum(allocation_number)) / zero_num)))
         i += 1
+    '''
+    # 1) Total number of clients
+    total_clients = sum(len(stratum) for stratum in stratify_result)
+    if total_clients == 0:
+        return []
 
+    # 2) Convert ratio -> integer total sample m
+    m = floor(sample_ratio * total_clients)
+    if m <= 0:
+        # If m is 0 or negative, no clients sampled
+        return [0] * len(stratify_result)
+
+    # 3) Compute (N_h, S_h) for each stratum
+    Nh_list = [len(stratum) for stratum in stratify_result]
+    Sh_list = []
+
+    for stratum in stratify_result:
+        if len(stratum) < 2:
+            # If only one client in the stratum, variability is 0
+            Sh_list.append(0.0)
+        else:
+            # Example: average pairwise distances of 'compressed_grads'
+            dist = np.zeros(len(stratum), dtype=float)
+            for j in range(len(stratum)):
+                for k in range(len(stratum)):
+                    if k != j:
+                        diff = compressed_grads[stratum[j]] - compressed_grads[stratum[k]]
+                        dist[j] += np.sqrt(np.sum(diff * diff))
+            dist /= len(stratum)
+            # S_h = average of dist
+            S_h = np.mean(dist)
+            Sh_list.append(S_h)
+
+    # 4) Weights = N_h * S_h
+    weights = [Nh * Sh for Nh, Sh in zip(Nh_list, Sh_list)]
+    total_weight = sum(weights)
+
+    # Edge case: if total_weight == 0, either all strata have single client or no variability
+    if total_weight == 0:
+        # Just distribute m evenly or put them in the first stratum
+        # Example: all strata get the same share or at least 1 for the first
+        # For simplicity, let's do a uniform distribution
+        uniform_alloc = [0] * len(stratify_result)
+        for i in range(m):
+            uniform_alloc[i % len(stratify_result)] += 1
+        return uniform_alloc
+
+    # 5) Proportional allocation with floor
+    allocation_number = []
+    fractional_parts = []
+    for w in weights:
+        raw = (w / total_weight) * m
+        int_alloc = floor(raw)
+        allocation_number.append(int_alloc)
+        fractional_parts.append(raw - int_alloc)
+
+    current_sum = sum(allocation_number)
+    diff = m - current_sum
+
+    # 6) If sum(allocation_number) < m, we have leftover to distribute
+    if diff > 0:
+        # Sort strata by largest fractional remainder
+        remainder_indices = sorted(
+            range(len(allocation_number)),
+            key=lambda i: fractional_parts[i],
+            reverse=True
+        )
+        # Distribute +1 to the top 'diff' strata
+        for i in range(diff):
+            allocation_number[remainder_indices[i]] += 1
+
+    # If diff < 0 (less likely since we used floor), you'd remove some from the smallest fractional remainders
+
+    # At this point sum(allocation_number) == m
     return allocation_number
 
 def cal_allocation_number_NS(stratify_result, compressed_grads, stratum_size, sample_ratio):
@@ -313,7 +404,8 @@ class Estimator:
     
 def local_data_sampling(dataset,K_desired,hatN):
     psample = K_desired/hatN
-    psample = min(psample, 1.0) 
+    psample = min(psample, 1.0)
+    print(f"Sample probability: {psample}")
     sampled_features = []
     sampled_labels = []
     for features, labels in dataset:

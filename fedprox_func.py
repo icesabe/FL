@@ -55,8 +55,8 @@ def stratify_clients_compressed_gradients(args, compressed_grads):
         pickle.dump(result, output)
 
     # print silhouette_score
-    s_score = metrics.silhouette_score(data, pred_y, sample_size=len(data), metric='euclidean')
-    print("strata_num：", args.strata_num, " silhouette_score：", s_score, "\n")
+    #s_score = metrics.silhouette_score(data, pred_y, sample_size=len(data), metric='euclidean')
+    #print("strata_num：", args.strata_num, " silhouette_score：", s_score, "\n")
     
     return result
 
@@ -97,8 +97,8 @@ def local_learning(model, mu: float, optimizer, train_data, n_SGD: int, loss_cla
     model_0 = deepcopy(model)
 
     for _ in range(n_SGD):
-
-        features, labels = next(iter(train_data))
+        train_data_iter = iter(train_data)
+        features, labels = next(train_data_iter)
 
         features = get_variable(features)
         labels = get_variable(labels)
@@ -955,7 +955,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     mu,
     alpha: float,  # Privacy parameter from FedSampling
     M: int,        # Maximum response value for the Estimator
-    K_desired: int, # Desired sample size
+    K_desired: float, # Desired sample size prop
     d_prime: int,  # Compression parameter
 ):  
     # Initialize Estimator for privacy-preserving sampling
@@ -964,27 +964,11 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
 
     K = len(training_sets)  # number of clients
     n_samples = np.array([len(db.dataset) for db in training_sets])
+    num_data = sum(len(dl.dataset) for dl in training_sets)
+    # K_desired is now derived from the total data * fraction
+    K_desired = int(num_data * K_desired)
     weights = n_samples / np.sum(n_samples)
     print("Clients' weights:", weights)
-
-    # 1. Get compressed gradients from all clients
-    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime)
-
-    # 2. Stratify clients based on compressed gradients ******************************
-    # Use compressed gradients for stratification
-    stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
-
-    N_STRATA = len(stratify_result)
-    SIZE_STRATA = [len(cls) for cls in stratify_result]
-    N_CLIENTS = sum(len(c) for c in stratify_result)  # number of clients
-
-    # 3. Server computes the m_h *****************************************************
-    # cal_allocation_number_NS uses Neyman allocation with N_h and S_h to calculate m_h
-    # Note: S_h is calculated using compressed gradients, not restored gradients
-    allocation_number = []
-    if config.WITH_ALLOCATION and not args.partition == 'shard':
-        allocation_number = cal_allocation_number_NS(stratify_result, compressed_grads, SIZE_STRATA, args.sample_ratio)
-    print(allocation_number)
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
@@ -1001,9 +985,25 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     sampled_clients_hist = np.zeros((n_iter, K)).astype(int)
 
     for i in range(n_iter):
-        clients_params = []
-        clients_models = []
-        sampled_clients_for_grad = []
+        # 1. Get compressed gradients from all clients
+        compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime)
+
+        # 2. Stratify clients based on compressed gradients ******************************
+        # Use compressed gradients for stratification
+        stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
+
+        N_STRATA = len(stratify_result)
+        SIZE_STRATA = [len(cls) for cls in stratify_result]
+        N_CLIENTS = sum(len(c) for c in stratify_result)  # number of clients
+
+        # 3. Server computes the m_h *****************************************************
+        # cal_allocation_number_NS uses Neyman allocation with N_h and S_h to calculate m_h
+        # Note: S_h is calculated using compressed gradients, not restored gradients
+        allocation_number = []
+        if config.WITH_ALLOCATION and not args.partition == 'shard':
+            allocation_number = cal_allocation_number_NS(stratify_result, compressed_grads, SIZE_STRATA,
+                                                         args.sample_ratio)
+        print(f"Allocation numbers (if any): {allocation_number}")
 
         # Estimate the total population size with privacy preservation
         hatN = estimator.estimate()
@@ -1023,7 +1023,8 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
             sum_norms = sum(client_grad_norms)
             # Find p_t^k
             for idx, k in enumerate(cls):
-                chosen_p[j][k] = round(client_grad_norms[idx] / sum_norms, 12)
+                chosen_p[j][k] = round(client_grad_norms[idx] / sum_norms, 12) \
+                                 if sum_norms != 0 else 0
         
         # Sampling clients based on stratification and privacy-preserving estimates
         if config.WITH_ALLOCATION and not args.partition == 'shard':
@@ -1035,12 +1036,14 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
             selects = choice(100, int(100 * args.sample_ratio), replace=False,
                              p=[0.01 for _ in range(100)])
             
-        selected = []
-        for _ in selects:
-            selected.append(_)
-        print("Chosen clients: ", selected)
-
-        for k in selected:
+        #selected = []
+        #for _ in selects:
+        #    selected.append(_)
+        #print("Chosen clients: ", selected)
+        clients_params = []
+        clients_models = []
+        sampled_clients_for_grad = []
+        for k in selects:
             local_model = deepcopy(model)
             local_optimizer = optim.SGD(local_model.parameters(), lr=lr)
 
@@ -1079,51 +1082,23 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
 
         # Create the new global model by aggregating client updates
         new_model = deepcopy(model)
-        #uniform weights
-        #weights_ = [1/n_sampled]*n_sampled
-        # Use data-size proportional weights for each selected client
-        #weights_ = [weights[client] for client in selected]
-        #weights_sum = sum(weights_)
-        #weights_ = [w/weights_sum for w in weights_]
-        #weights_ = calculate_aggregation_weights(stratify_result, chosen_p, sampled_clients_for_grad)
-        #assert abs(sum(weights_) - 1.0) < 1e-6, "Weights do not sum to 1"
-        #weights_sum = sum(weights_)
-        #print(f"Sum of weights: {weights_sum}")  # Should be close to 1/N * sum over all strata
-
-        #add an assertion (with some tolerance)
-        #assert abs(weights_sum - (1.0 / N)) < 1e-6, "Weights do not sum to 1/N as expected."
-        weights_ = calculate_aggregation_weights(
-            stratify_result, 
-            chosen_p, 
-            sampled_clients_for_grad,
-            n_sampled=n_sampled, 
-            weighting_scheme='proposed',
-            training_sets=training_sets
-        )
         # Aggregate model updates
         for layer_weights in new_model.parameters():
-            layer_weights.data.sub_(layer_weights.data)
-        #for layer_weights in new_model.parameters():
-        #    layer_weights.data.sub_(sum(weights_) * layer_weights.data)
+            layer_weights.data.zero()
+        n_contrib = len(clients_params)
+        if n_contrib > 0:
+            weights_ = [1.0 / n_sampled] * n_contrib
 
-        for k, client_hist in enumerate(clients_params):
-            for idx, layer_weights in enumerate(new_model.parameters()):
-                contribution = client_hist[idx].data * weights_[k]
-                layer_weights.data.add_(contribution)
-        #weights_ = [1 / n_sampled] * n_sampled
-        #for layer_weigths in new_model.parameters():
-        #   layer_weigths.data.sub_(layer_weigths.data)
+            # Add the contributions
+            for k, client_hist in enumerate(clients_params):
+                for idx, layer_weights in enumerate(new_model.parameters()):
+                    layer_weights.data.add_(client_hist[idx].data * weights_[k])
 
+            model = new_model
+        else:
+            # If no clients contributed (edge case), model stays the same
+            pass
 
-        #for layer_weights in new_model.parameters():
-        #    layer_weights.data.sub_(sum(weights_) * layer_weights.data)
-
-        #for k, client_hist in enumerate(clients_params):
-        #    for idx, layer_weights in enumerate(new_model.parameters()):
-        #        contribution = client_hist[idx].data * weights_[k]
-        #        layer_weights.data.add_(contribution)
-
-        model = new_model
 
         # Compute the loss/accuracy of the different clients with the new model
         for k, dl in enumerate(training_sets):

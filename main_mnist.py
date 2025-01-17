@@ -25,7 +25,7 @@ parser.add_argument("--seed", type=int, default=0, help="The seed used to initia
 parser.add_argument("--force", type=bool, default=False, help="Force a boolean equal to True when a simulation has already been run but needs to be rerun.")
 parser.add_argument("--alpha", type=float, default=0.0, help="The parameter alpha used in dirichlet partition.")
 parser.add_argument("--M", type=int, default=10, help="The maximum response value for the Estimator.")
-parser.add_argument("--K_desired", type=int, default=10, help="The desired sample size.")
+parser.add_argument("--K_desired", type=float, default=0.5, help="The desired sample size prop.")
 parser.add_argument("--d_prime", type=int, default=10, help="The d_prime parameter (previously fixed at 2).")
 args = parser.parse_args()
 
