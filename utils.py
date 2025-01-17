@@ -110,7 +110,7 @@ def collect_compressed_gradients(model, training_sets, d_prime):
     all_indices = []
     
     for client_id, train_data in enumerate(training_sets):
-        print(f"\nClient {client_id + 1}:")
+        #print(f"\nClient {client_id + 1}:")
 
         # Each client computes and compresses their gradient
         local_model = deepcopy(model)
@@ -405,7 +405,7 @@ class Estimator:
 def local_data_sampling(dataset,K_desired,hatN):
     psample = K_desired/hatN
     psample = min(psample, 1.0)
-    print(f"Sample probability: {psample}")
+    #print(f"Sample probability: {psample}")
     sampled_features = []
     sampled_labels = []
     for features, labels in dataset:
