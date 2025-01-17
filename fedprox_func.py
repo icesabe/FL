@@ -758,35 +758,19 @@ def FedProx_stratified_sampling_compressed_gradients(
     file_name: str,
     decay,
     mu,
-    K_desired: int,
+    K_desired: float,
     d_prime: int,
 ):  
     """
     Federated learning with stratified sampling using compressed gradients (non-DP version)
     """
-    print("Running FedProx with stratified sampling using compressed gradients")
-    print(f"Number of sampled clients (n_sampled): {n_sampled}")
+    #print("Running FedProx with stratified sampling using compressed gradients")
+    #print(f"Number of sampled clients (n_sampled): {n_sampled}")
 
     K = len(training_sets)  # number of clients
     n_samples = np.array([len(db.dataset) for db in training_sets])
     weights = n_samples / np.sum(n_samples)
-    print("Clients' weights:", weights)
-
-    # 1. Get compressed gradients from all clients
-    compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime)
-
-    # 2. Stratify clients based on compressed gradients
-    stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
-
-    N_STRATA = len(stratify_result)
-    SIZE_STRATA = [len(cls) for cls in stratify_result]
-    N_CLIENTS = sum(len(c) for c in stratify_result)
-
-    # 3. Calculate allocation numbers if needed
-    allocation_number = []
-    if config.WITH_ALLOCATION and not args.partition == 'shard':
-        allocation_number = cal_allocation_number_NS(stratify_result, compressed_grads, SIZE_STRATA, args.sample_ratio)
-    print("Allocation numbers:", allocation_number)
+    #print("Clients' weights:", weights)
 
     loss_hist = np.zeros((n_iter + 1, K))
     acc_hist = np.zeros((n_iter + 1, K))
@@ -803,9 +787,25 @@ def FedProx_stratified_sampling_compressed_gradients(
     sampled_clients_hist = np.zeros((n_iter, K)).astype(int)
 
     for i in range(n_iter):
-        clients_params = []
-        clients_models = []
-        sampled_clients_for_grad = []
+        # 1. Get compressed gradients from all clients
+        compressed_grads, grad_indices = collect_compressed_gradients(model, training_sets, d_prime)
+
+        # 2. Stratify clients based on compressed gradients ******************************
+        # Use compressed gradients for stratification
+        stratify_result = stratify_clients_compressed_gradients(args, compressed_grads)
+
+        N_STRATA = len(stratify_result)
+        SIZE_STRATA = [len(cls) for cls in stratify_result]
+        N_CLIENTS = sum(len(c) for c in stratify_result)  # number of clients
+
+        # 3. Server computes the m_h *****************************************************
+        # cal_allocation_number_NS uses Neyman allocation with N_h and S_h to calculate m_h
+        # Note: S_h is calculated using compressed gradients, not restored gradients
+        allocation_number = []
+        if config.WITH_ALLOCATION and not args.partition == 'shard':
+            allocation_number = cal_allocation_number_NS(stratify_result, compressed_grads, SIZE_STRATA,
+                                                         args.sample_ratio)
+        print(f"Allocation numbers (if any): {allocation_number}")
 
         # 4. Compute sampling probabilities based on gradient norms
         chosen_p = np.zeros((N_STRATA, N_CLIENTS)).astype(float)
@@ -819,7 +819,8 @@ def FedProx_stratified_sampling_compressed_gradients(
             sum_norms = sum(client_grad_norms)
             # Find p_t^k
             for idx, k in enumerate(cls):
-                chosen_p[j][k] = round(client_grad_norms[idx] / sum_norms, 12)
+                chosen_p[j][k] = round(client_grad_norms[idx] / sum_norms, 12) \
+                                 if sum_norms != 0 else 0
         
         # Sampling clients based on stratification
         if config.WITH_ALLOCATION and not args.partition == 'shard':
@@ -831,27 +832,29 @@ def FedProx_stratified_sampling_compressed_gradients(
             selects = choice(100, int(100 * args.sample_ratio), replace=False,
                              p=[0.01 for _ in range(100)])
             
-        selected = []
-        for _ in selects:
-            selected.append(_)
-        print("Chosen clients: ", selected)
-
-        for k in selected:
+        #selected = []
+        #for _ in selects:
+        #    selected.append(_)
+        #print("Chosen clients: ", selected)
+        clients_params = []
+        clients_models = []
+        sampled_clients_for_grad = []
+        for k in selects:
             local_model = deepcopy(model)
             local_optimizer = optim.SGD(local_model.parameters(), lr=lr)
             
             # Calculate sampling probability based on actual dataset size
-            total_samples = len(training_sets[k].dataset)
+            #total_samples = len(training_sets[k].dataset)
             # Ensure sampling probability is valid (between 0 and 1)
-            sampling_prob = min(1.0, max(0.0, float(K_desired) / float(total_samples)))
-            print(f"Client {k} - Total samples: {total_samples}, K_desired: {K_desired}, Sampling prob: {sampling_prob}")
+            #sampling_prob = K_desired #prop = 0.5
+            #print(f"Client {k} - Total samples: {total_samples}, K_desired: {K_desired}, Sampling prob: {sampling_prob}")
             
             # Sample data points
             sampled_features = []
             sampled_labels = []
             
             for features, labels in training_sets[k]:
-                sample_mask = np.random.binomial(n=1, p=sampling_prob, size=len(features))
+                sample_mask = np.random.binomial(n=1, p=K_desired, size=len(features))
                 selected_features = features[sample_mask == 1]
                 selected_labels = labels[sample_mask == 1]
                 
@@ -862,12 +865,13 @@ def FedProx_stratified_sampling_compressed_gradients(
             if sampled_features:
                 sampled_features = torch.cat(sampled_features)
                 sampled_labels = torch.cat(sampled_labels)
-                sampled_dataset = torch.utils.data.TensorDataset(sampled_features, sampled_labels)
-                sampled_loader = torch.utils.data.DataLoader(
-                    sampled_dataset,
-                    batch_size=args.batch_size,
-                    shuffle=True
-                )
+                if sampled_features is not None and len(sampled_features) > 0:
+                    sampled_dataset = torch.utils.data.TensorDataset(sampled_features, sampled_labels)
+                    sampled_loader = torch.utils.data.DataLoader(
+                        sampled_dataset,
+                        batch_size=args.batch_size,
+                        shuffle=True
+                    )
 
                 # Local training with FedProx
                 local_learning(
@@ -887,14 +891,15 @@ def FedProx_stratified_sampling_compressed_gradients(
             sampled_clients_for_grad.append(k)
             sampled_clients_hist[i, k] = 1
 
-        if not clients_params:  # Skip aggregation if no clients had samples
-            print("Warning: No clients had valid samples in this round")
-            continue
+        #if not clients_params:  # Skip aggregation if no clients had samples
+        #    print("Warning: No clients had valid samples in this round")
+        #    continue
 
         # Create the new global model by aggregating client updates
         new_model = deepcopy(model)
         
         # Calculate weights using the new function with stability measures
+        '''
         weights_ = calculate_aggregation_weights(
             stratify_result, 
             chosen_p, 
@@ -903,19 +908,26 @@ def FedProx_stratified_sampling_compressed_gradients(
             weighting_scheme='proposed',
             training_sets=training_sets
         )
+        '''
 
-        print(f"Round {i+1} - Sum of weights: {sum(weights_):.6f} (should be close to {1.0/n_sampled:.6f})")
+        #print(f"Round {i+1} - Sum of weights: {sum(weights_):.6f} (should be close to {1.0/n_sampled:.6f})")
 
         # Aggregate model updates
         for layer_weights in new_model.parameters():
-            layer_weights.data.sub_(layer_weights.data)
+            layer_weights.data.zero_()
+        n_contrib = len(clients_params)
+        if n_contrib > 0:
+            weights_ = [1.0 / n_sampled] * n_contrib
 
-        for k, client_hist in enumerate(clients_params):
-            for idx, layer_weights in enumerate(new_model.parameters()):
-                contribution = client_hist[idx].data * weights_[k]
-                layer_weights.data.add_(contribution)
+            # Add the contributions
+            for k, client_hist in enumerate(clients_params):
+                for idx, layer_weights in enumerate(new_model.parameters()):
+                    layer_weights.data.add_(client_hist[idx].data * weights_[k])
 
-        model = new_model
+            model = new_model
+        else:
+            # If no clients contributed (edge case), model stays the same
+            pass
 
         # Compute the loss/accuracy of the different clients with the new model
         for k, dl in enumerate(training_sets):
