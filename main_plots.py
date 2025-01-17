@@ -93,10 +93,10 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--plot_type', type=str, default='comparison', choices=['comparison'])
-    parser.add_argument('--partition', type=str, default='iid', choices=['iid', 'dirichlet', 'shard'])
+    parser.add_argument('--partition', type=str, default='iid')
     parser.add_argument('--sample_ratio', type=float, default=0.1)
     parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--dataset', type=str, default='MNIST', choices=['MNIST', 'CIFAR10', 'CIFAR100'])
+    parser.add_argument('--dataset', type=str, default='MNIST', choices=['MNIST', 'CIFAR10'])
     
     args = parser.parse_args()
 
