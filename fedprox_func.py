@@ -956,7 +956,7 @@ def FedProx_stratified_sampling_compressed_gradients(
     )
 
     return model, loss_hist, acc_hist
-
+import math
 def FedProx_stratified_dp_sampling_compressed_gradients(
     args,
     model,
@@ -969,12 +969,13 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
     file_name: str,
     decay,
     mu,
-    alpha: float,  # Privacy parameter from FedSampling
+    privacy: float,  # Privacy parameter from FedSampling
     M: int,        # Maximum response value for the Estimator
     K_desired: float, # Desired sample size prop
     d_prime: int,  # Compression parameter
 ):  
     # Initialize Estimator for privacy-preserving sampling
+    alpha = (math.exp(privacy) - 1) / (math.exp(privacy) + M - 2)
     train_users = {k: range(len(dl.dataset)) for k, dl in enumerate(training_sets)}
     estimator = Estimator(train_users, alpha, M)
 
@@ -1256,7 +1257,7 @@ def run(args, model_mnist, n_sampled, list_dls_train, list_dls_test, file_name):
             file_name,
             args.decay,
             args.mu,
-            args.alpha,
+            args.privacy,
             args.M,
             args.K_desired,
             args.d_prime,

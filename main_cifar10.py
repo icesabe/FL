@@ -23,7 +23,7 @@ parser.add_argument("--decay", type=float, default=1.0, help="The learning rate 
 parser.add_argument("--mu", type=float, default=0.0, help="The local loss function regularization parameter mu. FedProx with µ = 0 and without systems heterogeneity (no stragglers) corresponds to FedAvg.")
 parser.add_argument("--seed", type=int, default=0, help="The seed used to initialize the training model. We use 0 in all our experiments.")
 parser.add_argument("--force", type=bool, default=False, help="Force a boolean equal to True when a simulation has already been run but needs to be rerun.")
-parser.add_argument("--alpha", type=float, default=0.5, help="The privacy parameter alpha for DP sampling.")
+parser.add_argument("--privacy", type=float, default=0.5, help="The privacy parameter alpha for DP sampling.")
 parser.add_argument("--M", type=int, default=300, help="The maximum response value for the Estimator.")
 parser.add_argument("--K_desired", type=float, default=0.5, help="The desired sample size prop.")
 parser.add_argument("--d_prime", type=int, default=2, help="The compression parameter for gradient compression.")
