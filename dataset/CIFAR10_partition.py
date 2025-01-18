@@ -329,4 +329,52 @@ def get_CIFAR10_dataloaders(dataset_name, patition, batch_size: int, shuffle=Tru
             path_test, n_clients, batch_size, True
         )
 
+    elif partition == "iid":
+        # ----------------
+        # NEW BRANCH: IID
+        # ----------------
+        n_clients = 100
+        samples_train, samples_test = 500, 100 # for example
+
+        # 1) Create the base CIFAR-10 datasets (train/test)
+        transform = transforms.ToTensor()
+        cifar_trainset = datasets.CIFAR10(
+            root=folder,
+            train=True,
+            download=True,
+            transform=transform
+        )
+        cifar_testset = datasets.CIFAR10(
+            root=folder,
+            train=False,
+            download=True,
+            transform=transform
+        )
+
+        # 2) Randomly split among n_clients
+        #    This only works if 500 * 100 == 50,000 (the full train set)
+        #    and 100 * 100 == 10,000 (the full test set)
+        #    samples_train * n_clients == total train size
+        #    and samples_test * n_clients == total test size.
+
+        cifar_train_split = torch.utils.data.random_split(
+            cifar_trainset, [samples_train] * n_clients
+        )
+        cifar_test_split = torch.utils.data.random_split(
+            cifar_testset, [samples_test] * n_clients
+        )
+
+        # 3) Turn each split into a DataLoader
+        list_dls_train = [
+            torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=True)
+            for ds in cifar_train_split
+        ]
+        list_dls_test = [
+            torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=True)
+            for ds in cifar_test_split
+        ]
+
+    else:
+        raise ValueError(f"Unknown partition scheme: {partition}")
+
     return list_dls_train, list_dls_test
