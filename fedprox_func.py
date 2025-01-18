@@ -980,9 +980,14 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
 
     K = len(training_sets)  # number of clients
     n_samples = np.array([len(db.dataset) for db in training_sets])
-    num_data = sum(len(dl.dataset) for dl in training_sets)
+    #num_data = sum(len(dl.dataset) for dl in training_sets)
     # K_desired is now derived from the total data * fraction
-    K_desired = int(num_data * K_desired)
+    #K_desired = int(num_data * K_desired)
+    clipped_total = 0
+    for dl in training_sets:
+        real_size = len(dl.dataset)
+        clipped_total += min(real_size, M - 1)
+    K_desired_num = int(clipped_total * K_desired)
     weights = n_samples / np.sum(n_samples)
     #print("Clients' weights:", weights)
 
@@ -1066,7 +1071,7 @@ def FedProx_stratified_dp_sampling_compressed_gradients(
             # local data sampling
             sampled_features, sampled_labels = local_data_sampling(
                 training_sets[k], 
-                K_desired, 
+                K_desired_num,
                 hatN
             )
 
