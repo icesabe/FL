@@ -329,7 +329,7 @@ def get_CIFAR10_dataloaders(dataset_name, patition, batch_size: int, shuffle=Tru
             path_test, n_clients, batch_size, True
         )
 
-    elif partition == "iid":
+    elif patition == "iid":
         # ----------------
         # NEW BRANCH: IID
         # ----------------
