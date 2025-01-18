@@ -89,7 +89,7 @@ def client_compress_gradient(client_model, train_data, d_prime):
     
     # Compress using k-means
     grad_np = flat_grad.cpu().detach().numpy()
-    kmeans = MiniBatchKMeans(n_clusters=d_prime, batch_size = 1024 ,random_state=0)
+    kmeans = MiniBatchKMeans(n_clusters=d_prime, batch_size = 512 ,random_state=0)
     indices = kmeans.fit_predict(grad_np.reshape(-1, 1))
     centers = kmeans.cluster_centers_.flatten()
     
