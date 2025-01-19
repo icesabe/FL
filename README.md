@@ -1,6 +1,6 @@
 Google Colab Link: https://colab.research.google.com/drive/1-9u0vMrjcoQcXVXqSAP9ltl-yIz8MQxg <br />
 
-(Than: copy of the Google Colab to run 2 experiments at the same time https://colab.research.google.com/drive/1kFjx5Yrl3H_BHL0lfw_HyLxJyA5DfESn#scrollTo=9t3Xk4tOrChM)
+(Than: copies of the Google Colab to run 3 experiments at the same time https://colab.research.google.com/drive/1kFjx5Yrl3H_BHL0lfw_HyLxJyA5DfESn#scrollTo=9t3Xk4tOrChM, https://colab.research.google.com/drive/1-CrDQmlVBxObZWFGGSfBWTHzRh79PWUl#scrollTo=Q6OZfHhmr_Mc)
 
 
 <br />
