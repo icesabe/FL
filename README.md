@@ -1,6 +1,6 @@
 Google Colab Link: https://colab.research.google.com/drive/1-9u0vMrjcoQcXVXqSAP9ltl-yIz8MQxg <br />
 
-(Than: copies of the Google Colab to run 3 experiments at the same time https://colab.research.google.com/drive/1kFjx5Yrl3H_BHL0lfw_HyLxJyA5DfESn#scrollTo=9t3Xk4tOrChM, https://colab.research.google.com/drive/1-CrDQmlVBxObZWFGGSfBWTHzRh79PWUl#scrollTo=Q6OZfHhmr_Mc)
+(Than: copies of the Google Colab to run 3 experiments at the same time https://colab.research.google.com/drive/1kFjx5Yrl3H_BHL0lfw_HyLxJyA5DfESn#scrollTo=9t3Xk4tOrChM (CIFAR/a=0.01/FedSTS/q=0.1/NA is here), https://colab.research.google.com/drive/1-CrDQmlVBxObZWFGGSfBWTHzRh79PWUl#scrollTo=Q6OZfHhmr_Mc (CIFAR/IID/FedSTaS/q=0.1/e=3 is here))
 
 
 <br />
