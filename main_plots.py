@@ -16,8 +16,8 @@ def load_results(args):
         'importance': 'Importance',
         'ours': 'FedSTS',
         'dp': 'DP',
-        'comp_grads': 'Compressed Gradients',
-        'dp_comp_grads': 'FedSTaS'
+        'comp_grads': 'FedSTaS without Privacy',
+        'dp_comp_grads': 'FedSTaS with Privacy, e = 3'
     }
     
     for method_key, method_name in methods.items():
