@@ -54,7 +54,7 @@ def load_results(args):
     
     return results
 
-def plot_algorithm_comparison(results, partition, sample_ratio, dataset):
+def plot_algorithm_comparison(results, partition, sample_ratio, dataset, skip_points):
     """Plot algorithm comparison for training loss and accuracy."""
     if not results:
         print("No results to plot. Ensure valid files are present.")
@@ -66,7 +66,7 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset):
     plt.subplot(1, 2, 1)
     for method, data in results.items():
         if 'train_loss' in data and len(data['train_loss']) > 0:
-            plt.plot(data['train_loss'], '-', linewidth=2, label=method)
+            plt.plot(data['train_loss'][::skip_points], '-', linewidth=2, label=method)
     plt.title(f'Training Loss ({dataset}, Partition={partition}, q={sample_ratio})')
     plt.xlabel('Round')
     plt.ylabel('Loss')
@@ -77,7 +77,7 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset):
     plt.subplot(1, 2, 2)
     for method, data in results.items():
         if 'test_acc' in data and len(data['test_acc']) > 0:
-            plt.plot(data['test_acc'], '-', linewidth=2, label=method)
+            plt.plot(data['test_acc'][::skip_points], '-', linewidth=2, label=method)
     plt.title(f'Test Accuracy ({dataset}, Partition={partition}, q={sample_ratio})')
     plt.xlabel('Round')
     plt.ylabel('Accuracy (%)')
@@ -85,7 +85,7 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset):
     plt.legend(loc='lower right')
 
     plt.tight_layout()
-    plot_path = f'plots/{dataset}_{partition}_comparison_q{sample_ratio}.png'
+    plot_path = f'plots/{dataset}_{partition}_comparison_q{sample_ratio}_skip{skip_points}.png'
     plt.savefig(plot_path, bbox_inches='tight', dpi=300)
     print(f"Saved comparison plot to {plot_path}")
     plt.close()
@@ -106,7 +106,7 @@ def main():
     # Load results and plot
     print(f"Generating algorithm comparison plots for dataset={args.dataset}, partition={args.partition}, q={args.sample_ratio}...")
     results = load_results(args)
-    plot_algorithm_comparison(results, args.partition, args.sample_ratio, dataset=args.dataset)
+    plot_algorithm_comparison(results, args.partition, args.sample_ratio, dataset=args.dataset, skip_points=10)
 
 if __name__ == "__main__":
     main()
