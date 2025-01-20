@@ -66,7 +66,10 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset, skip_po
     plt.subplot(1, 2, 1)
     for method, data in results.items():
         if 'train_loss' in data and len(data['train_loss']) > 0:
-            plt.plot(data['train_loss'][::skip_points], '-', linewidth=2, label=method)
+            #plt.plot(data['train_loss'][::skip_points], '-', linewidth=2, label=method)
+            x_values = range(0, len(data['train_loss']), skip_points)
+            y_values = data['train_loss'][::skip_points]
+            plt.plot(x_values, y_values, '-', linewidth=2, label=method)
     plt.title(f'Training Loss ({dataset}, Partition={partition}, q={sample_ratio})')
     plt.xlabel('Round')
     plt.ylabel('Loss')
@@ -77,7 +80,10 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset, skip_po
     plt.subplot(1, 2, 2)
     for method, data in results.items():
         if 'test_acc' in data and len(data['test_acc']) > 0:
-            plt.plot(data['test_acc'][::skip_points], '-', linewidth=2, label=method)
+            #plt.plot(data['test_acc'][::skip_points], '-', linewidth=2, label=method)
+            x_values = range(0, len(data['test_acc']), skip_points)
+            y_values = data['test_acc'][::skip_points]
+            plt.plot(x_values, y_values, '-', linewidth=2, label=method)
     plt.title(f'Test Accuracy ({dataset}, Partition={partition}, q={sample_ratio})')
     plt.xlabel('Round')
     plt.ylabel('Accuracy (%)')
