@@ -124,7 +124,7 @@ def main():
     # Load results and plot
     print(f"Generating algorithm comparison plots for dataset={args.dataset}, partition={args.partition}, q={args.sample_ratio}...")
     results = load_results(args)
-    plot_algorithm_comparison(results, args.partition, args.sample_ratio, dataset=args.dataset, skip_points=10) # Set skip_points to 1 if don't want to skip data points
+    plot_algorithm_comparison(results, args.partition, args.sample_ratio, dataset=args.dataset, skip_points=1) # Set skip_points to 1 if don't want to skip data points
 
 if __name__ == "__main__":
     main()
