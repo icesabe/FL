@@ -11,19 +11,31 @@ import matplotlib.pyplot as plt
 def load_results(args):
     """Dynamically load and aggregate training results for accuracy and loss."""
     results = {}
-    methods = {
-        'random': 'Random',
-        'importance': 'Importance',
-        'ours': 'FedSTS',
-        'dp': 'DP',
-        'comp_grads': 'FedSTaS without Privacy',
-        'dp_comp_grads': 'FedSTaS with Privacy, e = 3'
-    }
+
+    if(args.plot_type == "comparison"):
+        methods = {
+            'random': 'Random',
+            'importance': 'Importance',
+            'ours': 'FedSTS',
+            'dp': 'DP',
+            'comp_grads': 'FedSTaS without Privacy',
+            'dp_comp_grads': 'FedSTaS with Privacy, e = 3'
+        }
+    elif(args.plot_type == "fedstast comparison"):
+         methods = {
+            'dp1': 'FedSTaS with Privacy, e = 1',
+            'dp2': 'FedSTaS with Privacy, e = 1',
+            'dp3': 'FedSTaS with Privacy, e = 3'
+        }
     
     for method_key, method_name in methods.items():
         # Patterns for accuracy and loss files
-        acc_pattern = f"saved_exp_info/acc/{args.dataset}_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
-        loss_pattern = f"saved_exp_info/loss/{args.dataset}_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
+        if(args.plot_type == "comparison"):
+            acc_pattern = f"saved_exp_info/acc/{args.dataset}_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
+            loss_pattern = f"saved_exp_info/loss/{args.dataset}_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
+        elif(args.plot_type == "fedstast comparison"):
+            acc_pattern = f"saved_exp_info/acc/{args.dataset}_{args.partition}_dp_comp_grads_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*_{method_key}.pkl"
+            loss_pattern = f"saved_exp_info/loss/{args.dataset}_{args.partition}_dp_comp_grads_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*_{method_key}.pkl"
 
         acc_files = glob.glob(acc_pattern)
         loss_files = glob.glob(loss_pattern)
@@ -98,7 +110,7 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset, skip_po
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--plot_type', type=str, default='comparison', choices=['comparison'])
+    parser.add_argument('--plot_type', type=str, default='comparison', choices=['comparison', 'fedstas comparison'])
     parser.add_argument('--partition', type=str, default='iid')
     parser.add_argument('--sample_ratio', type=float, default=0.1)
     parser.add_argument('--batch_size', type=int, default=128)
@@ -112,7 +124,7 @@ def main():
     # Load results and plot
     print(f"Generating algorithm comparison plots for dataset={args.dataset}, partition={args.partition}, q={args.sample_ratio}...")
     results = load_results(args)
-    plot_algorithm_comparison(results, args.partition, args.sample_ratio, dataset=args.dataset, skip_points=10)
+    plot_algorithm_comparison(results, args.partition, args.sample_ratio, dataset=args.dataset, skip_points=10) # Set skip_points to 1 if don't want to skip data points
 
 if __name__ == "__main__":
     main()
