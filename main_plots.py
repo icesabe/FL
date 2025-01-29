@@ -93,8 +93,8 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset, skip_po
     for method, data in results.items():
         if 'test_acc' in data and len(data['test_acc']) > 0:
             #plt.plot(data['test_acc'][::skip_points], '-', linewidth=2, label=method)
-            x_values = range(0, len(data['test_acc']), skip_points)
-            y_values = data['test_acc'][::skip_points]
+            x_values = range(0, len(data['test_acc'] - 1), skip_points)
+            y_values = data['test_acc'][:-1:skip_points]
             plt.plot(x_values, y_values, '-', linewidth=2, label=method)
     plt.title(f'Test Accuracy ({dataset}, Partition={partition}, q={sample_ratio})')
     plt.xlabel('Round')
