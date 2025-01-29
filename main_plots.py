@@ -24,7 +24,7 @@ def load_results(args):
     elif(args.plot_type == "fedstas_comparison"):
          methods = {
             'dp1': 'FedSTaS with Privacy, e = 1',
-            'dp2': 'FedSTaS with Privacy, e = 1',
+            'dp2': 'FedSTaS with Privacy, e = 2',
             'dp3': 'FedSTaS with Privacy, e = 3'
         }
     
@@ -34,9 +34,8 @@ def load_results(args):
             acc_pattern = f"saved_exp_info/acc/{args.dataset}_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
             loss_pattern = f"saved_exp_info/loss/{args.dataset}_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
         elif(args.plot_type == "fedstas_comparison"):
-            acc_pattern = f"saved_exp_info/acc/{args.dataset}_{args.partition}_dp_comp_grads_p{args.sample_ratio}_lr0.01_b{args.batch_size}_n20_i100_s10_d1.0_m0.0_s0_{method_key}.pkl"
-            print(acc_pattern)
-            loss_pattern = f"saved_exp_info/loss/{args.dataset}_{args.partition}_dp_comp_grads_p{args.sample_ratio}_lr0.01_b{args.batch_size}_n20_i100_s10_d1.0_m0.0_s0_{method_key}.pkl"
+            acc_pattern = f"saved_exp_info/acc/MNIST_dir_0.01_dp_comp_grads_p0.1_lr0.01_b64_n20_i100_s10_d1.0_m0.0_s0_{method_key}.pkl"
+            loss_pattern = f"saved_exp_info/acc/MNIST_dir_0.01_dp_comp_grads_p0.1_lr0.01_b64_n20_i100_s10_d1.0_m0.0_s0_{method_key}.pkl"
 
         acc_files = glob.glob(acc_pattern)
         loss_files = glob.glob(loss_pattern)
