@@ -94,7 +94,7 @@ Every experiment saves by default the training loss, the testing accuracy, and t
 ```
 ## Plotting line graphs for training loss and test accuracy
 
-Here we provide the implementation to plot training loss and accuracy line graphs for different plot types along with MNIST and CIFAR10 dataset. This code takes as input:
+Here we provide the implementation to plot training loss and accuracy line graphs for different plot types along with MNIST and CIFAR-10 dataset. This code takes as input:
 - The `plot_type` used. plot_type ∈ { comparison, fedstas_comparison } where comparison compares all models while fedstas_comparison compares the FedSTaS models trained with different privacy budgets, e. 
 - The `dataset` used. dataset ∈ { MNIST, CIFAR10 }
 - The data `partition` method used. partition ∈ { iid, dir_{alpha} }
