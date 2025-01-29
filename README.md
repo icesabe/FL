@@ -1,15 +1,12 @@
-Google Colab Link: https://colab.research.google.com/drive/1-9u0vMrjcoQcXVXqSAP9ltl-yIz8MQxg <br />
 
-(Than: copies of the Google Colab to run 3 experiments at the same time https://colab.research.google.com/drive/1kFjx5Yrl3H_BHL0lfw_HyLxJyA5DfESn#scrollTo=9t3Xk4tOrChM (CIFAR/a=0.01/FedSTS/q=0.1/NA is here), https://colab.research.google.com/drive/1-CrDQmlVBxObZWFGGSfBWTHzRh79PWUl#scrollTo=Q6OZfHhmr_Mc (CIFAR/IID/FedSTaS/q=0.1/e=3 is here))
 
 
 <br />
 <br />
 <br />
 
-# FedSTS: A Stratified Client Selection Framework for Consistently Fast Federated Learning
-
-A PyTorch implementation of our paper FedSTS: A Stratified Client Selection Framework for Consistently Fast Federated Learning.
+# FedSTaS: Client Stratification and Data Level Sampling for Efficient Federated Learning
+ICML 2025 (5135)
 
 ## Dependencies
 + Python (>=3.6)
@@ -28,8 +25,8 @@ pip install -r requirements.txt
 Here we provide the implementation of Stratified Client Selection Scheme along with MNIST, FMNIST and CIFAR-10 dataset. This code takes as input:
 
 - The `dataset` used.
-- The data `partition` method used. partition ∈ { iid, dir_{alpha}, shard }
-- The `sampling` scheme used. sampling ∈ { random, importance, ours }
+- The data `partition` method used. partition ∈ { iid, dir_{alpha}}
+- The `sampling` scheme used. sampling ∈ { ours, comp_grads, dp_comp_grads }
 - The percentage of clients sampled `sample_ratio`. We consider 100 clients in all our datasets and use thus sample_ratio=0.1.
 - The learning rate `lr` used.
 - The batch size `batch_size` used.
@@ -40,74 +37,76 @@ Here we provide the implementation of Stratified Client Selection Scheme along w
 - The local loss function regularization parameter `mu`. FedProx with µ = 0 and without systems heterogeneity (no stragglers) corresponds to FedAvg.
 - The `seed` used to initialize the training model. We use 0 in all our experiments.
 - Force a boolean equal `force` to True when a simulation has already been run but needs to be rerun.
-- The privacy parameter `alpha` used in DP sampling (default=0.5)
+- The privacy parameter `privacy` used in DP sampling (default=3)
 - The maximum response value `M` for the Estimator in DP sampling (default=300)
-- The desired sample size `K_desired` for local data sampling (default=2048)
-- The d_prime parameter (previously fixed at 2).
+- The desired client ratio `K_desired` for local data sampling (default=0.5)
+- The number of strata `d_prime`.
 + To train and evaluate on MNIST:
 ```
 
 
-+ To train and evaluate on MNIST:
-```
-python main_mnist.py --dataset=MNIST --partition=iid --sampling=random --sample_ratio=0.1 --lr=0.01 --batch_size=50 --n_SGD=50 --n_iter=200 --strata_num=10 --decay=1.0 --mu=0.0 --seed=0 --force=False --alpha=0.5 --M=300 --K_desired=2048
-```
-
-+ To train and evaluate on FMNIST:
-```
-python main_fmnist.py --dataset=FMNIST \
-    --partition=shard \
-    --sampling=importance \
-    --sample_ratio=0.1 \
-    --lr=0.01 \
-    --batch_size=50 \
-    --n_SGD=50 \
-    --n_iter=200 \
-    --strata_num=10 \
-    --decay=1.0 \
-    --mu=0.0 \
-    --seed=0 \
-    --force=False
-```
-
-+ To train and evaluate on CIFAR-10:
-```
-python main_cifar10.py --dataset=CIFAR10 \
-    --partition=dir_0.001 \
-    --sampling=ours \
-    --sample_ratio=0.1 \
-    --lr=0.05 \
-    --batch_size=50 \
-    --n_SGD=80 \
-    --n_iter=800 \
-    --strata_num=10 \
-    --decay=1.0 \
-    --mu=0.0 \
-    --seed=0 \
-    --force=False
-```
-
-+ To train and evaluate with DP sampling on MNIST:
++ To train and evaluate on MNIST (FedSTS):
 ```
 python main_mnist.py --dataset=MNIST \
     --partition=iid \
-    --sampling=dp \
+    --sampling=ours \
     --sample_ratio=0.1 \
     --lr=0.01 \
-    --batch_size=50 \
-    --n_SGD=50 \
-    --n_iter=200 \
+    --batch_size=64 \
+    --n_SGD=20 \
+    --n_iter=100 \
     --strata_num=10 \
     --decay=1.0 \
     --mu=0.0 \
     --seed=0 \
-    --force=False
+    --force=True \
+    --d_prime=10
 ```
 
-Every experiment saves by default the training loss, the testing accuracy, and the sampled clients at every iteration in the folder `saved_exp_info`. The global model and local models histories can also be saved.
 
-## Citation
-If you use our code in your research, please cite the following article:
++ To train and evaluate on MNIST (FedSTaS):
+```
+python main_mnist.py --dataset=MNIST \
+    --partition=dir_0.1 \
+    --sampling=comp_grads \
+    --sample_ratio=0.1 \
+    --lr=0.01 \
+    --batch_size=64 \
+    --n_SGD=20 \
+    --n_iter=100 \
+    --strata_num=10 \
+    --decay=1.0 \
+    --mu=0.0 \
+    --seed=0 \
+    --force=True \
+    --K_desired=0.5 \
+    --d_prime=10
+```
+
++ To train and evaluate with DP sampling on CIFAR10 (FedSTas):
+```
+python main_cifar10.py --dataset=CIFAR10 \
+    --partition=dir_0.01 \
+    --sampling=dp_comp_grads \
+    --sample_ratio=0.1 \
+    --lr=0.01 \
+    --batch_size=64 \
+    --n_SGD=20 \
+    --n_iter=300 \
+    --strata_num=10 \
+    --decay=1.0 \
+    --mu=0.0 \
+    --seed=0 \
+    --force=True \
+    --privacy=3 \
+    --M=300 \
+    --K_desired=0.5 \
+    --d_prime=10
+```
+
+Every experiment saves by default the training loss, the testing accuracy, and the sampled clients at every iteration in the folder `saved_exp_info`. 
+
 ```
 
 ```
+
