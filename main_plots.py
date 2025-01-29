@@ -86,7 +86,7 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset, skip_po
     plt.xlabel('Round')
     plt.ylabel('Loss')
     plt.grid(True)
-    plt.legend(loc='upper right')
+    plt.legend(loc='lower right')
 
     # Plot test accuracy
     plt.subplot(1, 2, 2)
