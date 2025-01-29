@@ -21,7 +21,7 @@ def load_results(args):
             'comp_grads': 'FedSTaS without Privacy',
             'dp_comp_grads': 'FedSTaS with Privacy, e = 3'
         }
-    elif(args.plot_type == "fedstast comparison"):
+    elif(args.plot_type == "fedstas_comparison"):
          methods = {
             'dp1': 'FedSTaS with Privacy, e = 1',
             'dp2': 'FedSTaS with Privacy, e = 1',
@@ -33,7 +33,7 @@ def load_results(args):
         if(args.plot_type == "comparison"):
             acc_pattern = f"saved_exp_info/acc/{args.dataset}_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
             loss_pattern = f"saved_exp_info/loss/{args.dataset}_{args.partition}_{method_key}_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*.pkl"
-        elif(args.plot_type == "fedstast comparison"):
+        elif(args.plot_type == "fedstas_comparison"):
             acc_pattern = f"saved_exp_info/acc/{args.dataset}_{args.partition}_dp_comp_grads_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*_{method_key}.pkl"
             loss_pattern = f"saved_exp_info/loss/{args.dataset}_{args.partition}_dp_comp_grads_p{args.sample_ratio}_lr*_b{args.batch_size}_n*_i*_s*_d*_m*_s*_{method_key}.pkl"
 
@@ -110,7 +110,7 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset, skip_po
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--plot_type', type=str, default='comparison', choices=['comparison', 'fedstas comparison'])
+    parser.add_argument('--plot_type', type=str, default='comparison', choices=['comparison', 'fedstas_comparison'])
     parser.add_argument('--partition', type=str, default='iid')
     parser.add_argument('--sample_ratio', type=float, default=0.1)
     parser.add_argument('--batch_size', type=int, default=128)
