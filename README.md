@@ -1,10 +1,3 @@
-
-
-
-<br />
-<br />
-<br />
-
 # FedSTaS: Client Stratification and Data Level Sampling for Efficient Federated Learning
 ICML 2025 (5135)
 
@@ -22,10 +15,10 @@ pip install -r requirements.txt
 
 ## Running an experiment
 
-Here we provide the implementation of Stratified Client Selection Scheme along with MNIST, FMNIST and CIFAR-10 dataset. This code takes as input:
+Here we provide the implementation of Stratified Client Selection Scheme along with MNIST and CIFAR-10 dataset. This code takes as input:
 
 - The `dataset` used.
-- The data `partition` method used. partition ∈ { iid, dir_{alpha}}
+- The data `partition` method used. partition ∈ { iid, dir_{alpha} }
 - The `sampling` scheme used. sampling ∈ { ours, comp_grads, dp_comp_grads }
 - The percentage of clients sampled `sample_ratio`. We consider 100 clients in all our datasets and use thus sample_ratio=0.1.
 - The learning rate `lr` used.
@@ -41,11 +34,8 @@ Here we provide the implementation of Stratified Client Selection Scheme along w
 - The maximum response value `M` for the Estimator in DP sampling (default=300)
 - The desired client ratio `K_desired` for local data sampling (default=0.5)
 - The number of strata `d_prime`.
-+ To train and evaluate on MNIST:
 ```
-
-
-+ To train and evaluate on MNIST (FedSTS):
+To train and evaluate on MNIST (FedSTS):
 ```
 python main_mnist.py --dataset=MNIST \
     --partition=iid \
@@ -62,9 +52,7 @@ python main_mnist.py --dataset=MNIST \
     --force=True \
     --d_prime=10
 ```
-
-
-+ To train and evaluate on MNIST (FedSTaS):
+To train and evaluate on MNIST (FedSTaS):
 ```
 python main_mnist.py --dataset=MNIST \
     --partition=dir_0.1 \
@@ -82,8 +70,7 @@ python main_mnist.py --dataset=MNIST \
     --K_desired=0.5 \
     --d_prime=10
 ```
-
-+ To train and evaluate with DP sampling on CIFAR10 (FedSTas):
+To train and evaluate with DP sampling on CIFAR10 (FedSTas):
 ```
 python main_cifar10.py --dataset=CIFAR10 \
     --partition=dir_0.01 \
@@ -103,10 +90,29 @@ python main_cifar10.py --dataset=CIFAR10 \
     --K_desired=0.5 \
     --d_prime=10
 ```
-
 Every experiment saves by default the training loss, the testing accuracy, and the sampled clients at every iteration in the folder `saved_exp_info`. 
-
 ```
+## Plotting line graphs for training loss and test accuracy
 
+Here we provide the implementation to plot training loss and accuracy line graphs for different plot types along with MNIST and CIFAR10 dataset. This code takes as input:
+- The `plot_type` used. plot_type ∈ { comparison, fedstas_comparison } where comparison compares all models while fedstas_comparison compares the FedSTaS models trained with different privacy budgets, e. 
+- The `dataset` used. dataset ∈ { MNIST, CIFAR10 }
+- The data `partition` method used. partition ∈ { iid, dir_{alpha} }
+- The percentage of clients sampled `sample_ratio`. We consider 100 clients in all our datasets and use thus sample_ratio=0.1.
+- The batch size `batch_size` used.
 ```
-
+To generate training loss and test accuracy line graphs for comparing FedSTaS models trained on MNIST data with varying privacy budgets, e:
+```
+python main_plots.py --dataset=MNIST \
+    --plot_type=fedstas_comparison \
+    --partition=dir_0.01 \
+    --sample_ratio=0.1 \
+    --batch_size=64
+```
+To generate training loss and test accuracy line graphs for comparing all models trained on CIFAR10 data:
+```
+python main_plots.py --dataset=CIFAR10 \
+    --plot_type=comparison \
+    --partition dir_0.1 \
+    --sample_ratio 0.1 \
+    --batch_size=64
