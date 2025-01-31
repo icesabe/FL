@@ -88,7 +88,7 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset, skip_po
     plt.xlabel('Round')
     plt.ylabel('Loss')
     plt.grid(True)
-    plt.legend(loc='upper right')
+    #plt.legend(loc='upper right')
 
     # Plot test accuracy
     plt.subplot(1, 2, 2)
@@ -102,7 +102,7 @@ def plot_algorithm_comparison(results, partition, sample_ratio, dataset, skip_po
     plt.xlabel('Round')
     plt.ylabel('Accuracy (%)')
     plt.grid(True)
-    plt.legend(loc='lower right')
+    #plt.legend(loc='lower right')
 
     plt.tight_layout()
     plot_path = f'plots/{dataset}_{partition}_comparison_q{sample_ratio}_skip{skip_points}.png'
